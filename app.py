@@ -66,24 +66,13 @@ def save_data_to_drive(data, filename):
 creds = authenticate_google()
 
 if creds:
-    # 1. Streamlitの「白い壁」を透明にする魔法のCSS
+    # 1. 最小限の余白消去のみ（これ以上はやりません）
     st.markdown("""
         <style>
+            .block-container {
+                padding: 1rem !important; /* 逆にあえて少し余白を作ることで操作しやすくします */
+            }
             header, footer { visibility: hidden; }
-            /* 画面全体の背景を透明にし、余白を削る */
-            .main, .stApp, .block-container {
-                background-color: transparent !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-            /* iframe（HTMLの箱）を強制的に見えるようにする */
-            iframe {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                z-index: 999; /* 重なりの一番上に持ってくる */
-            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -92,10 +81,11 @@ if creds:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # 3. 高さをしっかり確保して表示
+        # 3. シンプルに表示。高さを「スマホ2画面分」くらいしっかり取ります。
+        # scrolling=True は、スマホで「箱の中を触ったとき」に動くために必須です。
         st.components.v1.html(
             html_content,
-            height=1200, 
+            height=1500, 
             scrolling=True
         )
         
