@@ -37,7 +37,6 @@
             background: #218838;
             transform: scale(0.98);
         }
-        #debug { position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px; font-size: 10px; z-index: 10000; }
     </style>
 </head>
 <body>
@@ -58,7 +57,6 @@
     </div>
     <div id="seals-container"></div>
 </div>
-<div id="debug">クリック: 0</div>
 <script>
     const questions = [
         { id: 12, text: "Q12. 地域活動に参加していますか?", opts: ["週1以上", "月1以上", "年数回", "以前は参加", "参加せず"], type: "neutral" },
@@ -67,28 +65,19 @@
     ];
     let currentIdx = 0;
     let answers = {};
-    let clickCount = 0;
     const dropZone = document.getElementById('drop-zone');
     const container = document.getElementById('seals-container');
     const inputForm = document.getElementById('input-form');
     const nextBtn = document.getElementById('next-btn');
-    const debugDiv = document.getElementById('debug');
 
-    // 複数の方法でイベントを登録
-    nextBtn.onclick = function(e) {
-        debugDiv.innerText = 'クリック: ' + (++clickCount) + ' (onclick)';
-        goNext();
-    };
+    // Streamlitとの通信用
+    const streamlit = window.parent;
 
-    nextBtn.addEventListener('mousedown', function(e) {
-        debugDiv.innerText = 'クリック: ' + (++clickCount) + ' (mousedown)';
-        goNext();
-    });
-
-    nextBtn.addEventListener('touchstart', function(e) {
+    // ボタンクリック処理
+    nextBtn.addEventListener('click', goNext);
+    nextBtn.addEventListener('touchend', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        debugDiv.innerText = 'クリック: ' + (++clickCount) + ' (touchstart)';
         goNext();
     }, {passive: false});
 
@@ -103,7 +92,6 @@
             container.style.display = "none";
             inputForm.style.display = "block";
             nextBtn.style.display = "block";
-            debugDiv.innerText = 'ボタン表示 - 押してください';
         } else {
             document.getElementById('drop-zone-wrap').style.display = "block";
             container.style.display = "flex";
@@ -182,12 +170,10 @@
     }
 
     function goNext() {
-        debugDiv.innerText = 'goNext実行! currentIdx=' + currentIdx;
         if (currentIdx < questions.length - 1) {
             currentIdx++;
             load();
         } else {
-            debugDiv.innerText = 'データ送信中...';
             const results = {
                 done: true,
                 q_answers: answers,
@@ -197,13 +183,22 @@
                 bmi: document.getElementById('bmi-val').innerText,
                 timestamp: new Date().toISOString()
             };
-            // Streamlit側へ送信
-            window.parent.postMessage({
+            
+            // Streamlit側へ送信（複数回送信して確実に届くようにする）
+            streamlit.postMessage({
                 isStreamlitMessage: true,
                 type: "streamlit:setComponentValue",
                 value: results
             }, "*");
-            debugDiv.innerText = 'データ送信完了!';
+            
+            // 0.5秒後にもう一度送信
+            setTimeout(() => {
+                streamlit.postMessage({
+                    isStreamlitMessage: true,
+                    type: "streamlit:setComponentValue",
+                    value: results
+                }, "*");
+            }, 500);
         }
     }
     load();
