@@ -66,34 +66,36 @@ def save_data_to_drive(data, filename):
 creds = authenticate_google()
 
 if creds:
-    # 1. 上の空白を「マイナスの余白」で無理やり消し去るCSS
+    # 1. 究極の余白削除 & 全画面固定
     st.markdown("""
         <style>
-            /* 1. 全体の余白とスクロール設定 */
-            html, body, [data-testid="stAppViewContainer"] {
-                overflow: hidden !important;
-                height: 100vh !important;
-            }
-            /* 2. 上部の見えない余白を完全に削る(ネガティブマージン) */
+            /* 1. ツールバー、ヘッダー、フッターを物理的に削除 */
+            [data-testid="stHeader"], header, footer { display: none !important; }
+            
+            /* 2. アプリ全体の余白をゼロにし、位置を最上部に強制固定 */
             .main .block-container {
-                padding-top: 0 !important;
-                padding-bottom: 0 !important;
-                margin-top: -50px !important; /* ここで上に引き上げます */
+                padding: 0 !important;
+                margin: 0 !important;
                 max-width: 100% !important;
             }
-            /* 3. メニューバーやヘッダーを物理的に消滅させる */
-            header[data-testid="stHeader"] {
-                display: none !important;
-            }
-            [data-testid="stVerticalBlock"] {
-                gap: 0 !important;
-            }
             
-            /* 4. iframeを画面いっぱいに */
+            /* 3. Streamlitの「外枠」を動かなくする */
+            html, body, [data-testid="stAppViewContainer"] {
+                overflow: hidden !important;
+                position: fixed;
+                width: 100%;
+                height: 100%;
+            }
+
+            /* 4. HTML表示領域（iframe）を全画面にし、スクロールをここだけに集中させる */
             iframe {
+                position: fixed;
+                top: 0;
+                left: 0;
                 width: 100vw !important;
                 height: 100vh !important;
                 border: none !important;
+                z-index: 99999;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -103,11 +105,16 @@ if creds:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # 3. 高さをしっかり取って、内部スクロールを確実に有効にする
+        # 3. アドレスバー対策：スマホで全画面に見えるようにメタタグを注入
+        # これにより、少し動かすとアドレスバーが引っ込みやすくなります
+        mobile_fix = '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
+        full_content = mobile_fix + html_content
+
+        # 4. 表示
         st.components.v1.html(
-            html_content,
-            height=1200,   # もし下がまだ足りなければ1500に増やしてください
-            scrolling=True # これでスマホでの指の動きが中身に伝わります
+            full_content,
+            height=1200, # 中身より少し長くしておく
+            scrolling=True
         )
         
     except FileNotFoundError:
