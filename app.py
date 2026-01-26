@@ -66,41 +66,25 @@ def save_data_to_drive(data, filename):
 creds = authenticate_google()
 
 if creds:
-    # 1. 外側の「箱」のスクロール禁止を解除するCSS
-    st.markdown("""
-        <style>
-            /* Streamlit自体のスクロールを許可し、高さを自動にする */
-            .main, .stApp {
-                overflow: auto !important;
-            }
-            .main .block-container {
-                padding: 0 !important;
-                max-width: 100% !important;
-                height: auto !important; /* 固定解除 */
-            }
-            header, footer { visibility: hidden; height: 0; }
-            
-            /* iframe（中身）のサイズを中身に合わせる */
-            iframe {
-                border: none;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # 2. index.html の中身を表示
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # 3. 【ここが一番の修正】
-        # scrolling=False にし、逆に height を「超特大」に設定します。
-        # これにより、スマホが「あ、このページはすごく長いんだな」と認識して、
-        # ページ全体をスクロールさせてくれるようになります。
-        components.html(
-            html_content,
-            height=2500,  # 余裕を持ってかなり大きく！
-            scrolling=False # 内部スクロールではなく、ページ全体のスクロールに任せる
-        )
-        
+        # HTML内の特殊な文字をJavaScriptで安全に扱えるように変換
+        safe_html = json.dumps(html_content)
+
+        # 【これが奥の手】
+        # Streamlitの画面をJavaScriptで完全に上書きし、
+        # index.html の中身だけをページ全体に表示させます。
+        # これにより、スマホの標準的なスクロールが100%機能します。
+        components.html(f"""
+            <script>
+                const newHtml = {safe_html};
+                window.parent.document.open();
+                window.parent.document.write(newHtml);
+                window.parent.document.close();
+            </script>
+        """, height=0)
+
     except FileNotFoundError:
         st.error("index.html が見つかりません。")
