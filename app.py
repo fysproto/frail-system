@@ -77,26 +77,28 @@ if creds:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # 表示を画面いっぱいに広げるための設定
-        st.components.v1.html(
-            html_content,
-            height=1000,  # 縦幅を十分大きく取る
-            scrolling=True
-        )
-        
-        # 画面が横にズレるのを防ぐ設定
+        # 1. スマホの画面いっぱいに広げるためのCSS
         st.markdown("""
             <style>
                 .main .block-container {
                     padding: 0;
                     max-width: 100%;
                 }
+                /* iframe自体のスクロールを有効にし、Streamlitの余白を消す */
                 iframe {
                     width: 100%;
+                    height: 90vh; /* 画面の高さの90%を使う */
                     border: none;
                 }
             </style>
         """, unsafe_allow_html=True)
+
+        # 2. scrolling=True で中身のスクロールを許可する
+        components.html(
+            html_content, 
+            height=1200,   # 中身が長い場合はここをさらに大きく（1500など）してください
+            scrolling=True # これが重要です！
+        )
         
     except FileNotFoundError:
         st.error("index.html が見つかりません。")
