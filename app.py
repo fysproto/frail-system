@@ -52,44 +52,39 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
-    # 状態管理
     if "is_saved" not in st.session_state:
         st.session_state.is_saved = False
     
-    # CSS: 赤枠警告を隠し、測定画面に没入させる
+    # CSS: 赤枠を消しつつ、iframeが画面内に収まるように調整
     st.markdown("""
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
-            .main .block-container { padding: 0 !important; margin: 0 !important; }
-            iframe { width: 100vw !important; height: 100vh !important; border: none !important; }
+            .main .block-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+            /* iframeの高さを適切に設定 */
+            iframe { width: 100vw !important; height: 95vh !important; border: none !important; }
             [data-testid="stNotification"], .stAlert { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # まだ保存が完了していない（測定中）
     if not st.session_state.is_saved:
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_code = f.read()
             
-            # 3問の測定画面を表示
-            res = components.html(html_code, height=1200)
+            # HTMLコンポーネントを表示
+            res = components.html(html_code, height=900) # 高さを少し余裕持たせつつ調整
             
-            # HTML側の「最後の次へ」ボタンでデータが送られてきた場合
             if res is not None and isinstance(res, dict) and "done" in res:
                 save_data_to_drive(res)
                 st.session_state.is_saved = True
                 st.rerun()
         except Exception as e:
-            st.error(f"システムエラー: {e}")
-
-    # 保存完了後の画面
+            st.error(f"エラー: {e}")
     else:
         st.balloons()
-        st.markdown("<div style='text-align:center; padding: 50px 0;'>", unsafe_allow_html=True)
-        st.write("## 🎉 測定結果を保存しました")
-        st.write("Googleドライブにデータが保管されました。")
+        st.markdown("<div style='text-align:center; padding-top: 50px;'>", unsafe_allow_html=True)
+        st.success("### 🎉 保存が完了しました")
         if st.button("マイページへ戻る"):
-            st.session_state.is_saved = False # リセットして戻る（擬似）
+            st.session_state.is_saved = False
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)

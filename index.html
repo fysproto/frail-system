@@ -4,36 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; }
-        #app { display: flex; flex-direction: column; height: 100vh; }
-        header { flex-shrink: 0; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; padding: 15px 10px; }
-        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 20px; }
-        #drop-zone { width: 160px; height: 160px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-size: 0.9rem; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; font-family: sans-serif; background: #f0f4f8; overflow: hidden; }
+        #app { display: flex; flex-direction: column; height: 100vh; position: relative; }
+        
+        header { flex-shrink: 0; background: #fff; text-align: center; padding: 10px; border-bottom: 2px solid #dee2e6; }
+        #q-text { font-weight: bold; font-size: 1.1rem; min-height: 3rem; display: flex; align-items: center; justify-content: center; }
+
+        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; padding: 10px 0; }
+        
+        #drop-zone { width: 140px; height: 140px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-size: 0.8rem; text-align: center; }
         .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; }
-        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .input-group { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
-        .input-group input { width: 80px; padding: 10px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 5px; }
-        #seals-container { flex-shrink: 0; background: #fff; border-top: 1px solid #dee2e6; padding: 20px 0 40px 0; display: flex; flex-direction: column; gap: 15px; }
-        .seal-row { display: flex; gap: 12px; justify-content: center; }
-        .seal { width: 70px; height: 70px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        #next-btn { display: none; margin: 20px 0; padding: 15px 60px; border-radius: 35px; border: none; background: #28a745; color: white; font-weight: bold; font-size: 1.2rem; box-shadow: 0 4px 15px rgba(40,167,69,0.3); }
+
+        #input-form { display: none; width: 90%; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .input-group { margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+        .input-group input { width: 70px; padding: 8px; font-size: 1.1rem; border: 1px solid #ddd; border-radius: 5px; }
+
+        #seals-container { flex-shrink: 0; background: #fff; padding: 15px 0 30px 0; border-top: 1px solid #dee2e6; }
+        .seal-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 8px; }
+        .seal { width: 65px; height: 65px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; box-shadow: 0 3px 5px rgba(0,0,0,0.1); }
+
+        #next-btn { display: none; padding: 12px 50px; border-radius: 30px; border: none; background: #28a745; color: white; font-weight: bold; font-size: 1.1rem; }
         .bg-blue { background: #007bff !important; } .bg-red { background: #dc3545 !important; } .bg-yellow { background: #ffc107 !important; color: #000; }
-        .status-dot { width: 25px; height: 25px; border-radius: 50%; background: #ddd; }
+        .status-dot { width: 20px; height: 20px; border-radius: 50%; background: #ddd; }
     </style>
 </head>
 <body>
 <div id="app">
     <header>
-        <div id="q-progress" style="font-size: 0.8rem; color: #6c757d; margin-bottom: 5px;"></div>
-        <div id="q-text" style="font-weight: bold; font-size: 1.1rem; line-height: 1.4;"></div>
+        <div id="q-progress" style="font-size: 0.75rem; color: #6c757d;"></div>
+        <div id="q-text"></div>
     </header>
     <div id="main-stage">
-        <div id="drop-zone-wrap"><div id="drop-zone">シールを<br>置いてください</div></div>
+        <div id="drop-zone-wrap"><div id="drop-zone">ここに<br>シールを置く</div></div>
         <div id="input-form">
             <div class="input-group"><span>握力 (kg)</span><input type="number" id="grip" oninput="judgeGrip()"><div id="dot-grip" class="status-dot"></div></div>
             <div class="input-group"><span>身長 (cm)</span><input type="number" id="height" oninput="calcBMI()"><div></div></div>
             <div class="input-group"><span>体重 (kg)</span><input type="number" id="weight" oninput="calcBMI()"><div></div></div>
-            <div class="input-group" style="border-top:1px solid #eee; padding-top:10px;"><span>BMI</span><span id="bmi-val" style="font-weight:bold; font-size:1.3rem;">--</span><div id="dot-bmi" class="status-dot"></div></div>
+            <div class="input-group" style="border-top:1px solid #eee; padding-top:5px;"><span>BMI</span><span id="bmi-val" style="font-weight:bold;">--</span><div id="dot-bmi" class="status-dot"></div></div>
         </div>
         <button id="next-btn" onclick="goNext()">次へ進む</button>
     </div>
@@ -61,9 +68,9 @@
             document.getElementById('next-btn').style.display = "block";
         } else {
             document.getElementById('drop-zone-wrap').style.display = "block";
-            document.getElementById('seals-container').style.display = "flex";
+            document.getElementById('seals-container').style.display = "block";
             document.getElementById('input-form').style.display = "none";
-            document.getElementById('drop-zone').innerHTML = "シールを<br>置いてください";
+            document.getElementById('drop-zone').innerHTML = "ここに<br>シールを置く";
             renderSeals(q.opts);
         }
     }
@@ -99,7 +106,7 @@
             active.remove(); document.ontouchmove = null;
         };
     }
-    function updatePos(t) { active.style.left = (t.clientX-35)+'px'; active.style.top = (t.clientY-35)+'px'; }
+    function updatePos(t) { active.style.left = (t.clientX-32)+'px'; active.style.top = (t.clientY-32)+'px'; }
 
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
@@ -119,16 +126,8 @@
         if (currentIdx < questions.length - 1) {
             currentIdx++; load();
         } else {
-            // 全問終了時にデータを送信
-            const finalData = {
-                done: true,
-                q_answers: answers,
-                grip: document.getElementById('grip').value,
-                bmi: document.getElementById('bmi-val').innerText,
-                timestamp: new Date().toISOString()
-            };
+            const finalData = { done: true, q_answers: answers, grip: document.getElementById('grip').value, bmi: document.getElementById('bmi-val').innerText };
             window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: finalData }, "*");
-            document.getElementById('app').innerHTML = "<div style='display:flex;justify-content:center;align-items:center;height:100vh;'>データを保存中...</div>";
         }
     }
     load();
