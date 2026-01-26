@@ -45,16 +45,15 @@ def save_data_to_drive(data):
     filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     file_metadata = {'name': filename, 'mimeType': 'application/json'}
     media = MediaInMemoryUpload(json.dumps(data, ensure_ascii=False).encode('utf-8'), mimetype='application/json')
-    service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    service.files().create(body=file_metadata, media_body=media).execute()
 
 creds = authenticate_google()
 
 if creds:
-    # 完了フラグ
     if "is_finished" not in st.session_state:
         st.session_state.is_finished = False
 
-    # 余計な余白を消す
+    # 余白を消す
     st.markdown("""
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
@@ -68,10 +67,10 @@ if creds:
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_code = f.read()
-            # 測定画面を表示。戻り値にデータが入るまで待機
+            # 安定版のHTMLを表示
             res = components.html(html_code, height=900)
             
-            # 最終問題（身体計測）で「次へ」が押されたとき
+            # HTML側の最終ボタンでデータが飛んできたら
             if res and isinstance(res, dict) and res.get("done"):
                 save_data_to_drive(res)
                 st.session_state.is_finished = True
