@@ -6,7 +6,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
 
-# --- 設定 ---
+# --- 基本設定 ---
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
@@ -54,14 +54,12 @@ creds = authenticate_google()
 if creds:
     if "is_saved" not in st.session_state:
         st.session_state.is_saved = False
-    
-    # CSS: 赤枠を消しつつ、iframeが画面内に収まるように調整
+
     st.markdown("""
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
-            .main .block-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
-            /* iframeの高さを適切に設定 */
-            iframe { width: 100vw !important; height: 95vh !important; border: none !important; }
+            .main .block-container { padding: 0 !important; margin: 0 !important; }
+            iframe { width: 100vw !important; height: 100vh !important; border: none !important; overflow: hidden; }
             [data-testid="stNotification"], .stAlert { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
@@ -71,20 +69,23 @@ if creds:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_code = f.read()
             
-            # HTMLコンポーネントを表示
-            res = components.html(html_code, height=900) # 高さを少し余裕持たせつつ調整
+            # 戻り値を待つ。keyを設定することでデータの受け渡しを安定させる
+            res = components.html(html_code, height=1000, key="measurement_screen")
             
-            if res is not None and isinstance(res, dict) and "done" in res:
+            if res is not None and isinstance(res, dict) and res.get("done") is True:
+                # データ保存
                 save_data_to_drive(res)
                 st.session_state.is_saved = True
                 st.rerun()
         except Exception as e:
-            st.error(f"エラー: {e}")
+            st.error(f"Error: {e}")
     else:
+        # 保存完了後のマイページ導線
         st.balloons()
-        st.markdown("<div style='text-align:center; padding-top: 50px;'>", unsafe_allow_html=True)
-        st.success("### 🎉 保存が完了しました")
-        if st.button("マイページへ戻る"):
+        st.markdown("<div style='text-align:center; padding-top: 100px;'>", unsafe_allow_html=True)
+        st.success("### 測定結果の保存が完了しました")
+        # 擬似的なマイページボタン。押すと最初の測定画面にリセットされる設定
+        if st.button("マイページ（ホーム）へ戻る"):
             st.session_state.is_saved = False
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
