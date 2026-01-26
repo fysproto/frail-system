@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* 基本は固定 */
         html, body { 
             position: fixed; width: 100%; height: 100%; 
-            overflow: hidden; touch-action: none; 
+            overflow: hidden;
             font-family: sans-serif; margin: 0; background: #f0f4f8; 
         }
         #app { display: flex; flex-direction: column; height: 100%; }
@@ -15,23 +14,27 @@
         #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         #drop-zone { width: 150px; height: 150px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-size: 0.8rem; }
         .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; top:0; left:0; }
-        #seals-container { height: 180px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 10px 0; }
+        #seals-container { height: 180px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 10px 0; touch-action: none; }
         .seal-row { display: flex; gap: 12px; justify-content: center; width: 100%; }
         .seal { width: 68px; height: 68px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); touch-action: auto; }
         .input-group { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
-        .input-group input { width: 80px; padding: 8px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 5px; text-align: right; touch-action: auto; }
+        .input-group input { width: 80px; padding: 8px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 5px; text-align: right; }
         .status-dot { width: 25px; height: 25px; border-radius: 50%; background: #ddd; }
-        .bg-blue { background: #007bff !important; } .bg-red { background: #dc3545 !important; } .bg-yellow { background: #ffc107 !important; color: #000; }
+        .bg-blue { background: #007bff !important; } 
+        .bg-red { background: #dc3545 !important; } 
+        .bg-yellow { background: #ffc107 !important; color: #000; }
         
-        /* ボタンを物理的に最前面に出し、タップ制限を解除 */
         #next-btn { 
             display: none; margin-top: 15px; padding: 15px 50px; border-radius: 30px; border: none; 
             background: #28a745; color: white; font-weight: bold; font-size: 1.2rem;
-            touch-action: auto !important; /* タップを許可 */
+            cursor: pointer;
             position: relative; z-index: 9999;
+            touch-action: manipulation;
         }
-        @keyframes pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+        #next-btn:active {
+            background: #218838;
+        }
     </style>
 </head>
 <body>
@@ -54,9 +57,9 @@
 </div>
 <script>
     const questions = [
-        { id: 12, text: "Q12. 地域活動に参加していますか？", opts: ["週1以上", "月1以上", "年数回", "以前は参加", "参加せず"], type: "neutral" },
-        { id: 7, text: "Q7. 歩く速度が遅くなりましたか？", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
-        { id: "calc", text: "身体計測（握力・BMI）", type: "calc" }
+        { id: 12, text: "Q12. 地域活動に参加していますか?", opts: ["週1以上", "月1以上", "年数回", "以前は参加", "参加せず"], type: "neutral" },
+        { id: 7, text: "Q7. 歩く速度が遅くなりましたか?", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
+        { id: "calc", text: "身体計測(握力・BMI)", type: "calc" }
     ];
     let currentIdx = 0;
     let answers = {};
@@ -65,14 +68,13 @@
     const inputForm = document.getElementById('input-form');
     const nextBtn = document.getElementById('next-btn');
 
-    // ボタンに直接 touchstart イベントを登録（これが最強の解決策です）
-    nextBtn.addEventListener('touchstart', (e) => {
-        e.stopPropagation(); // bodyの制限を無視
+    // ボタンクリック処理
+    nextBtn.addEventListener('click', goNext);
+    nextBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         goNext();
     }, {passive: false});
-
-    // PCでのテスト用
-    nextBtn.addEventListener('click', goNext);
 
     function load() {
         const q = questions[currentIdx];
@@ -85,14 +87,12 @@
             container.style.display = "none";
             inputForm.style.display = "block";
             nextBtn.style.display = "block";
-            document.body.style.touchAction = "auto";
         } else {
             document.getElementById('drop-zone-wrap').style.display = "block";
             container.style.display = "flex";
             inputForm.style.display = "none";
             renderSeals(q.opts);
             dropZone.innerHTML = "ここにドロップ";
-            document.body.style.touchAction = "none";
         }
     }
 
@@ -105,17 +105,25 @@
             s.addEventListener('touchstart', onStart, {passive: false});
             (i < 3) ? row1.appendChild(s) : row2.appendChild(s);
         });
-        container.appendChild(row1); if(opts.length > 3) container.appendChild(row2);
+        container.appendChild(row1); 
+        if(opts.length > 3) container.appendChild(row2);
     }
 
     let active = null;
     function onStart(e) {
+        e.preventDefault();
         if(e.target.className !== 'seal') return;
         active = e.target.cloneNode(true);
         document.body.appendChild(active);
-        active.style.position = 'fixed'; active.style.zIndex = '1000';
+        active.style.position = 'fixed'; 
+        active.style.zIndex = '1000';
+        active.style.pointerEvents = 'none';
         updatePos(e.touches[0]);
-        const moveHandler = (ev) => { ev.preventDefault(); updatePos(ev.touches[0]); };
+        
+        const moveHandler = (ev) => { 
+            ev.preventDefault(); 
+            updatePos(ev.touches[0]); 
+        };
         const endHandler = (ev) => {
             const t = ev.changedTouches[0];
             const r = dropZone.getBoundingClientRect();
@@ -135,7 +143,10 @@
         document.addEventListener('touchend', endHandler, {passive: false});
     }
 
-    function updatePos(t) { active.style.left = (t.clientX - 34) + 'px'; active.style.top = (t.clientY - 34) + 'px'; }
+    function updatePos(t) { 
+        active.style.left = (t.clientX - 34) + 'px'; 
+        active.style.top = (t.clientY - 34) + 'px'; 
+    }
 
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
