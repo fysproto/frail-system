@@ -72,14 +72,31 @@ if creds:
         del st.session_state.credentials
         st.rerun()
 
-    # index.html (UI) の読み込み
+# index.html (UI) の読み込み
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # HTMLからのデータ受け取り用
-        # (ここでは簡易的にiframe表示。データの受け渡しが必要な場合は追加実装)
-        components.html(html_content, height=800, scrolling=True)
+        # 表示を画面いっぱいに広げるための設定
+        st.components.v1.html(
+            html_content,
+            height=1000,  # 縦幅を十分大きく取る
+            scrolling=True
+        )
+        
+        # 画面が横にズレるのを防ぐ設定
+        st.markdown("""
+            <style>
+                .main .block-container {
+                    padding: 0;
+                    max-width: 100%;
+                }
+                iframe {
+                    width: 100%;
+                    border: none;
+                }
+            </style>
+        """, unsafe_allow_html=True)
         
     except FileNotFoundError:
-        st.error("index.html が見つかりません。GitHubにアップロードされているか確認してください。")
+        st.error("index.html が見つかりません。")
