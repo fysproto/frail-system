@@ -8,12 +8,11 @@ from datetime import datetime
 
 # --- 設定 ---
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
-# ★ここをご自身のStreamlitのURLに合わせてください
 REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
 st.set_page_config(page_title="フレイル予防システム", layout="centered")
 
-# --- 認証ロジック ---
+# --- 認証 ---
 def authenticate_google():
     if 'credentials' not in st.session_state:
         client_config = {
@@ -37,12 +36,10 @@ def authenticate_google():
             flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
             auth_url, _ = flow.authorization_url(prompt='consent')
             st.title("フレイル測定アプリ")
-            st.write("測定を開始するには、下のボタンからログインしてください。")
             st.link_button("Googleアカウントでログイン", auth_url)
             return None
     return st.session_state.credentials
 
-# --- Google Drive保存機能 ---
 def save_data_to_drive(data):
     creds = st.session_state.credentials
     service = build('drive', 'v3', credentials=creds)
@@ -52,43 +49,46 @@ def save_data_to_drive(data):
     service.files().create(body=file_metadata, media_body=media, fields='id').execute()
     return filename
 
-# --- メイン処理 ---
 creds = authenticate_google()
 
 if creds:
-    # データ受取用のプレースホルダー
-    placeholder = st.empty()
-
-    # スマホ用CSS（外枠の固定）
+    # 赤枠エラーを防ぐために CSS を少し緩める
     st.markdown("""
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
             .main .block-container { padding: 0 !important; margin: 0 !important; }
-            section.main { overflow: hidden !important; }
+            /* iframeの設定を極限までシンプルに */
             iframe { 
-                position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; 
-                border: none !important; z-index: 999; pointer-events: auto !important;
+                width: 100vw !important; height: 100vh !important; 
+                border: none !important;
             }
         </style>
     """, unsafe_allow_html=True)
 
-    try:
-        with open("index.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
+    # データを一時的に保持する場所
+    if "final_data" not in st.session_state:
+        st.session_state.final_data = None
 
-        # HTMLを表示
-        with placeholder.container():
-            response_data = components.html(html_content, height=2000)
-
-        # データが届いたら保存処理
-        if response_data:
-            placeholder.empty() # HTML画面を消去
-            with st.spinner("Googleドライブに保存中..."):
-                fname = save_data_to_drive(response_data)
-                st.balloons()
-                st.success(f"### 🎉 測定完了！\nデータを保存しました: {fname}")
-                if st.button("もう一度測定する"):
-                    st.rerun()
+    # HTMLの表示
+    if st.session_state.final_data is None:
+        try:
+            with open("index.html", "r", encoding="utf-8") as f:
+                html_content = f.read()
             
-    except FileNotFoundError:
-        st.error("index.html が見つかりません。")
+            # 戻り値をセッションに格納
+            res = components.html(html_content, height=1200)
+            if res:
+                st.session_state.final_data = res
+                st.rerun()
+        except FileNotFoundError:
+            st.error("index.htmlが見つかりません。")
+    
+    # データが届いた後の処理
+    else:
+        st.balloons()
+        with st.spinner("ドライブに保存中..."):
+            fname = save_data_to_drive(st.session_state.final_data)
+            st.success(f"### 保存完了！\nファイル: {fname}")
+            if st.button("次の測定へ"):
+                st.session_state.final_data = None
+                st.rerun()
