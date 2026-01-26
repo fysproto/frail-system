@@ -9,6 +9,7 @@ from datetime import datetime
 # --- 設定 ---
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
+# 【重要】現在の実際のアプリURLに固定しました
 REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
 st.set_page_config(page_title="フレイル予防システム", layout="centered")
@@ -16,7 +17,7 @@ st.set_page_config(page_title="フレイル予防システム", layout="centered
 # --- 認証ロジック ---
 def authenticate_google():
     if 'credentials' not in st.session_state:
-        # 【修正ポイント2】ファイルを読まずに、Secretsの情報を直接使う
+        # Secretsから情報を読み込む
         client_config = {
             "web": {
                 "client_id": st.secrets["google_client_id"],
@@ -29,19 +30,56 @@ def authenticate_google():
             }
         }
 
+        # Googleログイン後の処理
         if "code" in st.query_params:
             flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
             flow.fetch_token(code=st.query_params["code"])
             st.session_state.credentials = flow.credentials
             st.query_params.clear()
             st.rerun()
+            return st.session_state.credentials
+        
+        # ログインボタンの表示
         else:
             flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
             auth_url, _ = flow.authorization_url(prompt='consent')
             st.title("フレイル測定アプリ")
-            st.write("プロトタイプへようこそ。")
+            st.write("プロトタイプデモ画面へようこそ。")
+            st.write("動作確認にはGoogleアカウントでのログインが必要です。")
             st.link_button("Googleアカウントでログイン", auth_url)
             return None
+            
     return st.session_state.credentials
 
-# --- (以下、save_data_to_drive関数などはあなたの元のコードと同じでOK) ---
+# --- Google Drive保存機能 ---
+def save_data_to_drive(data, filename):
+    creds = st.session_state.credentials
+    service = build('drive', 'v3', credentials=creds)
+    
+    file_metadata = {'name': filename, 'mimeType': 'application/json'}
+    media = MediaInMemoryUpload(json.dumps(data).encode('utf-8'), mimetype='application/json')
+    
+    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    return file.get('id')
+
+# --- メイン処理 ---
+creds = authenticate_google()
+
+if creds:
+    # ログイン成功後の画面
+    st.sidebar.write(f"ログイン中")
+    if st.sidebar.button("ログアウト"):
+        del st.session_state.credentials
+        st.rerun()
+
+    # index.html (UI) の読み込み
+    try:
+        with open("index.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        
+        # HTMLからのデータ受け取り用
+        # (ここでは簡易的にiframe表示。データの受け渡しが必要な場合は追加実装)
+        components.html(html_content, height=800, scrolling=True)
+        
+    except FileNotFoundError:
+        st.error("index.html が見つかりません。GitHubにアップロードされているか確認してください。")
