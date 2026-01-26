@@ -66,25 +66,38 @@ def save_data_to_drive(data, filename):
 creds = authenticate_google()
 
 if creds:
+    # 1. Streamlitの「白い壁」を透明にする魔法のCSS
+    st.markdown("""
+        <style>
+            header, footer { visibility: hidden; }
+            /* 画面全体の背景を透明にし、余白を削る */
+            .main, .stApp, .block-container {
+                background-color: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            /* iframe（HTMLの箱）を強制的に見えるようにする */
+            iframe {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                z-index: 999; /* 重なりの一番上に持ってくる */
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 2. index.html の読み込み
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # HTML内の特殊な文字をJavaScriptで安全に扱えるように変換
-        safe_html = json.dumps(html_content)
-
-        # 【これが奥の手】
-        # Streamlitの画面をJavaScriptで完全に上書きし、
-        # index.html の中身だけをページ全体に表示させます。
-        # これにより、スマホの標準的なスクロールが100%機能します。
-        components.html(f"""
-            <script>
-                const newHtml = {safe_html};
-                window.parent.document.open();
-                window.parent.document.write(newHtml);
-                window.parent.document.close();
-            </script>
-        """, height=0)
-
+        # 3. 高さをしっかり確保して表示
+        st.components.v1.html(
+            html_content,
+            height=1200, 
+            scrolling=True
+        )
+        
     except FileNotFoundError:
         st.error("index.html が見つかりません。")
