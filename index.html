@@ -4,27 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* 画面の基本設定 */
+        /* 画面の揺れ・スクロールを完全に禁止 */
         html, body { 
             width: 100%; height: 100%; 
-            overflow-y: auto; touch-action: manipulation; 
+            overflow: hidden; touch-action: none; 
             font-family: sans-serif; margin: 0; background: #f0f4f8; 
+            -webkit-user-select: none; user-select: none;
         }
-        #app { display: flex; flex-direction: column; min-height: 100vh; }
+        #app { display: flex; flex-direction: column; height: 100vh; }
         
-        /* ヘッダー：質問文を確実に表示 */
         header { 
             flex-shrink: 0; background: #fff; text-align: center; 
             border-bottom: 2px solid #dee2e6; padding: 15px 10px;
         }
 
-        /* メイン：質問とドロップゾーン */
         #main-stage { 
             flex: 1; display: flex; flex-direction: column; 
             align-items: center; justify-content: flex-start; padding-top: 20px;
         }
         
-        /* ドロップゾーン */
         #drop-zone { 
             width: 160px; height: 160px; border: 4px dashed #adb5bd; 
             border-radius: 50%; display: flex; align-items: center; 
@@ -37,28 +35,27 @@
             color: white; font-weight: bold; position: absolute; 
         }
 
-        /* 入力フォーム */
-        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; box-sizing: border-box; }
         .input-group { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
-        .input-group input { width: 80px; padding: 8px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 5px; }
+        .input-group input { width: 80px; padding: 10px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 5px; touch-action: auto; }
 
-        /* シール（選択肢）エリア：常に下の方に配置 */
         #seals-container { 
             flex-shrink: 0; background: #fff; border-top: 1px solid #dee2e6; 
-            padding: 20px 0; display: flex; flex-direction: column; gap: 15px;
+            padding: 20px 0; display: flex; flex-direction: column; gap: 15px; padding-bottom: 40px;
         }
         .seal-row { display: flex; gap: 12px; justify-content: center; }
         .seal { 
             width: 70px; height: 70px; border-radius: 50%; background: #e9ecef; 
             display: flex; align-items: center; justify-content: center; 
             font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            touch-action: none;
         }
 
-        /* ボタン */
         #next-btn { 
             display: none; margin: 20px 0; padding: 15px 60px; 
             border-radius: 35px; border: none; background: #28a745; 
             color: white; font-weight: bold; font-size: 1.2rem; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
 
         .bg-blue { background: #007bff !important; } 
@@ -133,57 +130,13 @@
 
     let active = null;
     function onStart(e) {
+        e.preventDefault();
         active = e.target.cloneNode(true);
         document.body.appendChild(active);
-        active.style.position = 'fixed'; active.style.zIndex = '1000';
+        active.style.position = 'fixed'; active.style.zIndex = '2000';
         updatePos(e.touches[0]);
-        document.ontouchmove = (ev) => { updatePos(ev.touches[0]); };
+        document.ontouchmove = (ev) => { ev.preventDefault(); updatePos(ev.touches[0]); };
         document.ontouchend = (ev) => {
             const t = ev.changedTouches[0];
             const r = document.getElementById('drop-zone').getBoundingClientRect();
-            if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) {
-                const q = questions[currentIdx];
-                let c = "bg-yellow";
-                if(q.type==="logic") c = (q.red === active.innerText) ? "bg-red" : "bg-blue";
-                document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
-                document.getElementById('next-btn').style.display = "block";
-            }
-            active.remove(); document.ontouchmove = null;
-        };
-    }
-    function updatePos(t) { active.style.left = (t.clientX-35)+'px'; active.style.top = (t.clientY-35)+'px'; }
-
-    function judgeGrip() {
-        const val = parseFloat(document.getElementById('grip').value);
-        document.getElementById('dot-grip').className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
-    }
-    function calcBMI() {
-        const h = parseFloat(document.getElementById('height').value)/100;
-        const w = parseFloat(document.getElementById('weight').value);
-        if (h > 0 && w > 0) {
-            const bmi = (w/(h*h)).toFixed(1);
-            document.getElementById('bmi-val').innerText = bmi;
-            document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
-        }
-    }
-
-    function goNext() {
-        if (currentIdx < questions.length - 1) {
-            currentIdx++;
-            load();
-        } else {
-            const results = {
-                grip: document.getElementById('grip').value,
-                height: document.getElementById('height').value,
-                weight: document.getElementById('weight').value,
-                bmi: document.getElementById('bmi-val').innerText,
-                date: new Date().toLocaleString()
-            };
-            window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: results }, "*");
-            alert("データを送信しました。保存完了の合図が出るまでお待ちください。");
-        }
-    }
-    load();
-</script>
-</body>
-</html>
+            if (t.clientX > r.left && t.clientX < r.right && t.

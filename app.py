@@ -8,7 +8,7 @@ from datetime import datetime
 
 # --- 設定 ---
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
-# ★ここをご自身のURLに合わせてください
+# ★ここをご自身のStreamlitのURLに合わせてください
 REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
 st.set_page_config(page_title="フレイル予防システム", layout="centered")
@@ -33,11 +33,11 @@ def authenticate_google():
             st.session_state.credentials = flow.credentials
             st.query_params.clear()
             st.rerun()
-            return st.session_state.credentials
         else:
             flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
             auth_url, _ = flow.authorization_url(prompt='consent')
             st.title("フレイル測定アプリ")
+            st.write("測定を開始するには、下のボタンからログインしてください。")
             st.link_button("Googleアカウントでログイン", auth_url)
             return None
     return st.session_state.credentials
@@ -56,15 +56,18 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
-    # スマホ用レイアウト調整CSS
+    # データ受取用のプレースホルダー
+    placeholder = st.empty()
+
+    # スマホ用CSS（外枠の固定）
     st.markdown("""
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
             .main .block-container { padding: 0 !important; margin: 0 !important; }
-            html, body, [data-testid="stAppViewContainer"] { overflow: hidden !important; height: 100vh !important; }
+            section.main { overflow: hidden !important; }
             iframe { 
                 position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; 
-                border: none !important; z-index: 999999 !important; pointer-events: auto !important;
+                border: none !important; z-index: 999; pointer-events: auto !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -73,14 +76,19 @@ if creds:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
 
-        # HTMLからのデータ受け取り
-        response_data = components.html(html_content, height=1500, scrolling=True)
+        # HTMLを表示
+        with placeholder.container():
+            response_data = components.html(html_content, height=2000)
 
-        # データが届いたら保存
+        # データが届いたら保存処理
         if response_data:
-            st.balloons()
-            fname = save_data_to_drive(response_data)
-            st.success(f"保存完了: {fname}")
+            placeholder.empty() # HTML画面を消去
+            with st.spinner("Googleドライブに保存中..."):
+                fname = save_data_to_drive(response_data)
+                st.balloons()
+                st.success(f"### 🎉 測定完了！\nデータを保存しました: {fname}")
+                if st.button("もう一度測定する"):
+                    st.rerun()
             
     except FileNotFoundError:
         st.error("index.html が見つかりません。")
