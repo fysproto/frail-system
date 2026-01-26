@@ -66,13 +66,30 @@ def save_data_to_drive(data, filename):
 creds = authenticate_google()
 
 if creds:
-    # 1. 最小限の余白消去のみ（これ以上はやりません）
+    # 1. 画面の構造を根本から作り直すCSS
     st.markdown("""
         <style>
-            .block-container {
-                padding: 1rem !important; /* 逆にあえて少し余白を作ることで操作しやすくします */
+            /* 1. Streamlit自体のスクロールを完全に殺し、中身だけに任せる */
+            html, body, [data-testid="stAppViewContainer"] {
+                overflow: hidden !important;
+                height: 100vh !important;
             }
-            header, footer { visibility: hidden; }
+            /* 2. 余白をミリ単位でゼロにする */
+            .main .block-container {
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+                height: 100vh !important;
+            }
+            /* 3. ヘッダーなどの邪魔者を完全消去 */
+            header, footer { display: none !important; }
+            
+            /* 4. HTMLを表示する箱を、スマホ画面と全く同じサイズにする */
+            iframe {
+                width: 100vw !important;
+                height: 100vh !important;
+                border: none !important;
+            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -81,11 +98,11 @@ if creds:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # 3. シンプルに表示。高さを「スマホ2画面分」くらいしっかり取ります。
-        # scrolling=True は、スマホで「箱の中を触ったとき」に動くために必須です。
+        # 3. scrolling=True にして、箱の中で「だけ」動けるようにする
+        # これにより、スマホの「更新動作」に邪魔されず、中身が動きます
         st.components.v1.html(
             html_content,
-            height=1500, 
+            height=2000, # 中身の高さに合わせて十分確保
             scrolling=True
         )
         
