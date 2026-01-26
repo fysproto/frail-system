@@ -66,27 +66,34 @@ def save_data_to_drive(data, filename):
 creds = authenticate_google()
 
 if creds:
-    # 1. 余白を消すCSS（これはそのまま）
+    # 1. 画面の余白を消し、スクロールをスムーズにするCSS
     st.markdown("""
         <style>
+            /* ツールバーを非表示 */
+            header, footer { visibility: hidden; }
+            /* 画面全体の余白を完全にゼロにする */
             .main .block-container {
                 padding: 0 !important;
                 max-width: 100% !important;
             }
-            header, footer { visibility: hidden; }
+            /* コンポーネントの隙間を消す */
+            div[data-testid="stVerticalBlock"] > div {
+                padding: 0;
+            }
         </style>
     """, unsafe_allow_html=True)
 
-    # 2. index.html の読み込み
+    # 2. index.html の中身を「iframeなし」で直接表示する
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # 3. 【ここを修正】高さを1500以上に広げ、スクロールをTrueにします
-        components.html(
-            html_content, 
-            height=1600,   # 円が下にあるなら、ここを2000くらいまで上げてもOK
-            scrolling=True # これでスマホでの指の動きが中身に伝わります
+        # 3. 【ここがポイント】iframeを使わず、直接HTMLを注入します
+        # これにより、スマホの標準的なスクロールがそのまま機能します
+        st.components.v1.html(
+            html_content,
+            height=2000, # 中身が全部収まるよう、かなり長めに設定
+            scrolling=True
         )
         
     except FileNotFoundError:
