@@ -4,43 +4,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        /* 画面の基本設定 */
         html, body { 
             width: 100%; height: 100%; 
             overflow-y: auto; touch-action: manipulation; 
             font-family: sans-serif; margin: 0; background: #f0f4f8; 
         }
-        #app { display: flex; flex-direction: column; min-height: 100%; }
-        header { height: 70px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; }
-        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; }
-        #drop-zone { width: 150px; height: 150px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-size: 0.8rem; }
-        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; }
-        #seals-container { height: 180px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
-        .seal-row { display: flex; gap: 12px; justify-content: center; }
-        .seal { width: 68px; height: 68px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; }
+        #app { display: flex; flex-direction: column; min-height: 100vh; }
+        
+        /* ヘッダー：質問文を確実に表示 */
+        header { 
+            flex-shrink: 0; background: #fff; text-align: center; 
+            border-bottom: 2px solid #dee2e6; padding: 15px 10px;
+        }
+
+        /* メイン：質問とドロップゾーン */
+        #main-stage { 
+            flex: 1; display: flex; flex-direction: column; 
+            align-items: center; justify-content: flex-start; padding-top: 20px;
+        }
+        
+        /* ドロップゾーン */
+        #drop-zone { 
+            width: 160px; height: 160px; border: 4px dashed #adb5bd; 
+            border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; background: #fff; position: relative; 
+            color: #adb5bd; font-size: 0.9rem; margin-bottom: 20px;
+        }
+        .placed-seal { 
+            width: 100%; height: 100%; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            color: white; font-weight: bold; position: absolute; 
+        }
+
+        /* 入力フォーム */
+        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
         .input-group { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
         .input-group input { width: 80px; padding: 8px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 5px; }
+
+        /* シール（選択肢）エリア：常に下の方に配置 */
+        #seals-container { 
+            flex-shrink: 0; background: #fff; border-top: 1px solid #dee2e6; 
+            padding: 20px 0; display: flex; flex-direction: column; gap: 15px;
+        }
+        .seal-row { display: flex; gap: 12px; justify-content: center; }
+        .seal { 
+            width: 70px; height: 70px; border-radius: 50%; background: #e9ecef; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+
+        /* ボタン */
+        #next-btn { 
+            display: none; margin: 20px 0; padding: 15px 60px; 
+            border-radius: 35px; border: none; background: #28a745; 
+            color: white; font-weight: bold; font-size: 1.2rem; 
+        }
+
+        .bg-blue { background: #007bff !important; } 
+        .bg-red { background: #dc3545 !important; } 
+        .bg-yellow { background: #ffc107 !important; color: #000; }
         .status-dot { width: 25px; height: 25px; border-radius: 50%; background: #ddd; }
-        .bg-blue { background: #007bff !important; } .bg-red { background: #dc3545 !important; } .bg-yellow { background: #ffc107 !important; color: #000; }
-        #next-btn { display: none; margin: 20px auto; padding: 15px 50px; border-radius: 30px; border: none; background: #28a745; color: white; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
 <div id="app">
     <header>
-        <div id="q-progress" style="font-size: 0.7rem; color: #6c757d;"></div>
-        <div id="q-text" style="font-weight: bold; font-size: 0.9rem; padding: 0 10px;"></div>
+        <div id="q-progress" style="font-size: 0.8rem; color: #6c757d; margin-bottom: 5px;"></div>
+        <div id="q-text" style="font-weight: bold; font-size: 1.1rem; line-height: 1.4;"></div>
     </header>
+
     <div id="main-stage">
         <div id="drop-zone-wrap"><div id="drop-zone">ここにドロップ</div></div>
+        
         <div id="input-form">
             <div class="input-group"><span>握力 (kg)</span><input type="number" id="grip" oninput="judgeGrip()"><div id="dot-grip" class="status-dot"></div></div>
             <div class="input-group"><span>身長 (cm)</span><input type="number" id="height" oninput="calcBMI()"><div></div></div>
             <div class="input-group"><span>体重 (kg)</span><input type="number" id="weight" oninput="calcBMI()"><div></div></div>
-            <div class="input-group" style="border-top: 1px solid #eee; padding-top: 10px;"><span>BMI</span><span id="bmi-val">--</span><div id="dot-bmi" class="status-dot"></div></div>
+            <div class="input-group" style="border-top: 1px solid #eee; padding-top: 10px;"><span>BMI</span><span id="bmi-val" style="font-weight:bold; font-size:1.3rem;">--</span><div id="dot-bmi" class="status-dot"></div></div>
         </div>
+        
         <button id="next-btn" onclick="goNext()">次へ進む</button>
     </div>
+
     <div id="seals-container"></div>
 </div>
 
@@ -51,30 +97,29 @@
         { id: "calc", text: "身体計測（握力・BMI）", type: "calc" }
     ];
     let currentIdx = 0;
-    const dropZone = document.getElementById('drop-zone');
-    const container = document.getElementById('seals-container');
-    const inputForm = document.getElementById('input-form');
-    const nextBtn = document.getElementById('next-btn');
 
     function load() {
         const q = questions[currentIdx];
         document.getElementById('q-progress').innerText = `STEP ${currentIdx + 1} / ${questions.length}`;
         document.getElementById('q-text').innerText = q.text;
-        nextBtn.style.display = "none";
+        document.getElementById('next-btn').style.display = "none";
+
         if (q.type === "calc") {
             document.getElementById('drop-zone-wrap').style.display = "none";
-            container.style.display = "none";
-            inputForm.style.display = "block";
-            nextBtn.style.display = "block";
+            document.getElementById('seals-container').style.display = "none";
+            document.getElementById('input-form').style.display = "block";
+            document.getElementById('next-btn').style.display = "block";
         } else {
             document.getElementById('drop-zone-wrap').style.display = "block";
-            container.style.display = "flex";
-            inputForm.style.display = "none";
+            document.getElementById('seals-container').style.display = "flex";
+            document.getElementById('input-form').style.display = "none";
             renderSeals(q.opts);
+            document.getElementById('drop-zone').innerHTML = "ここにドロップ";
         }
     }
 
     function renderSeals(opts) {
+        const container = document.getElementById('seals-container');
         container.innerHTML = "";
         const row1 = document.createElement('div'); row1.className = 'seal-row';
         const row2 = document.createElement('div'); row2.className = 'seal-row';
@@ -90,24 +135,24 @@
     function onStart(e) {
         active = e.target.cloneNode(true);
         document.body.appendChild(active);
-        active.style.position = 'fixed';
-        active.style.zIndex = '1000';
+        active.style.position = 'fixed'; active.style.zIndex = '1000';
         updatePos(e.touches[0]);
         document.ontouchmove = (ev) => { updatePos(ev.touches[0]); };
         document.ontouchend = (ev) => {
             const t = ev.changedTouches[0];
-            const r = dropZone.getBoundingClientRect();
+            const r = document.getElementById('drop-zone').getBoundingClientRect();
             if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) {
                 const q = questions[currentIdx];
                 let c = "bg-yellow";
                 if(q.type==="logic") c = (q.red === active.innerText) ? "bg-red" : "bg-blue";
-                dropZone.innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
-                nextBtn.style.display = "block";
+                document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
+                document.getElementById('next-btn').style.display = "block";
             }
             active.remove(); document.ontouchmove = null;
         };
     }
-    function updatePos(t) { active.style.left = (t.clientX-34)+'px'; active.style.top = (t.clientY-34)+'px'; }
+    function updatePos(t) { active.style.left = (t.clientX-35)+'px'; active.style.top = (t.clientY-35)+'px'; }
+
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
         document.getElementById('dot-grip').className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
@@ -125,4 +170,20 @@
     function goNext() {
         if (currentIdx < questions.length - 1) {
             currentIdx++;
-            load
+            load();
+        } else {
+            const results = {
+                grip: document.getElementById('grip').value,
+                height: document.getElementById('height').value,
+                weight: document.getElementById('weight').value,
+                bmi: document.getElementById('bmi-val').innerText,
+                date: new Date().toLocaleString()
+            };
+            window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: results }, "*");
+            alert("データを送信しました。保存完了の合図が出るまでお待ちください。");
+        }
+    }
+    load();
+</script>
+</body>
+</html>
