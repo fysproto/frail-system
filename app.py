@@ -66,23 +66,14 @@ def save_data_to_drive(data, filename):
 creds = authenticate_google()
 
 if creds:
-    # 1. スマホの画面にフィットさせ、余白を完全に削る魔法のCSS
+    # 1. 余白を消すCSS（これはそのまま）
     st.markdown("""
         <style>
-            /* 画面全体の余白をゼロにする */
             .main .block-container {
                 padding: 0 !important;
                 max-width: 100% !important;
             }
-            /* ヘッダーやツールバーを非表示にして画面を広く使う */
             header, footer { visibility: hidden; }
-            
-            /* iframe（HTMLを入れる箱）を画面いっぱいにする */
-            iframe {
-                width: 100%;
-                height: 100vh; /* 画面の高さ100%に固定 */
-                border: none;
-            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -91,12 +82,11 @@ if creds:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # 3. 画面に表示（高さを auto に近い挙動にするために少し大きめに設定）
-        # scrolling=False にすることで、二重スクロールを防ぎます
+        # 3. 【ここを修正】高さを1500以上に広げ、スクロールをTrueにします
         components.html(
             html_content, 
-            height=800,  # スマホの一般的な高さに合わせる
-            scrolling=False
+            height=1600,   # 円が下にあるなら、ここを2000くらいまで上げてもOK
+            scrolling=True # これでスマホでの指の動きが中身に伝わります
         )
         
     except FileNotFoundError:
