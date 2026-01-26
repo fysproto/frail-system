@@ -4,22 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        html, body { 
-            width: 100%; height: 100%; overflow: hidden; touch-action: none; 
-            font-family: sans-serif; margin: 0; background: #f0f4f8; 
-        }
+        html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; }
         #app { display: flex; flex-direction: column; height: 100vh; }
         header { flex-shrink: 0; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; padding: 15px 10px; }
         #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 20px; }
-        #drop-zone { width: 160px; height: 160px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; }
+        #drop-zone { width: 160px; height: 160px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-size: 0.9rem; }
         .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; }
-        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; box-sizing: border-box; }
+        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .input-group { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
-        .input-group input { width: 80px; padding: 10px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 5px; touch-action: auto; }
+        .input-group input { width: 80px; padding: 10px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 5px; }
         #seals-container { flex-shrink: 0; background: #fff; border-top: 1px solid #dee2e6; padding: 20px 0 40px 0; display: flex; flex-direction: column; gap: 15px; }
         .seal-row { display: flex; gap: 12px; justify-content: center; }
         .seal { width: 70px; height: 70px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        #next-btn { display: none; margin: 20px 0; padding: 15px 60px; border-radius: 35px; border: none; background: #28a745; color: white; font-weight: bold; font-size: 1.2rem; }
+        #next-btn { display: none; margin: 20px 0; padding: 15px 60px; border-radius: 35px; border: none; background: #28a745; color: white; font-weight: bold; font-size: 1.2rem; box-shadow: 0 4px 15px rgba(40,167,69,0.3); }
         .bg-blue { background: #007bff !important; } .bg-red { background: #dc3545 !important; } .bg-yellow { background: #ffc107 !important; color: #000; }
         .status-dot { width: 25px; height: 25px; border-radius: 50%; background: #ddd; }
     </style>
@@ -31,12 +28,12 @@
         <div id="q-text" style="font-weight: bold; font-size: 1.1rem; line-height: 1.4;"></div>
     </header>
     <div id="main-stage">
-        <div id="drop-zone-wrap"><div id="drop-zone">ここにドロップ</div></div>
+        <div id="drop-zone-wrap"><div id="drop-zone">シールを<br>置いてください</div></div>
         <div id="input-form">
             <div class="input-group"><span>握力 (kg)</span><input type="number" id="grip" oninput="judgeGrip()"><div id="dot-grip" class="status-dot"></div></div>
             <div class="input-group"><span>身長 (cm)</span><input type="number" id="height" oninput="calcBMI()"><div></div></div>
             <div class="input-group"><span>体重 (kg)</span><input type="number" id="weight" oninput="calcBMI()"><div></div></div>
-            <div class="input-group" style="border-top: 1px solid #eee; padding-top: 10px;"><span>BMI</span><span id="bmi-val" style="font-weight:bold; font-size:1.3rem;">--</span><div id="dot-bmi" class="status-dot"></div></div>
+            <div class="input-group" style="border-top:1px solid #eee; padding-top:10px;"><span>BMI</span><span id="bmi-val" style="font-weight:bold; font-size:1.3rem;">--</span><div id="dot-bmi" class="status-dot"></div></div>
         </div>
         <button id="next-btn" onclick="goNext()">次へ進む</button>
     </div>
@@ -49,11 +46,14 @@
         { id: "calc", text: "身体計測（握力・BMI）", type: "calc" }
     ];
     let currentIdx = 0;
+    let answers = {};
+
     function load() {
         const q = questions[currentIdx];
-        document.getElementById('q-progress').innerText = `STEP ${currentIdx + 1} / ${questions.length}`;
+        document.getElementById('q-progress').innerText = `設問 ${currentIdx + 1} / ${questions.length}`;
         document.getElementById('q-text').innerText = q.text;
         document.getElementById('next-btn').style.display = "none";
+        
         if (q.type === "calc") {
             document.getElementById('drop-zone-wrap').style.display = "none";
             document.getElementById('seals-container').style.display = "none";
@@ -63,10 +63,11 @@
             document.getElementById('drop-zone-wrap').style.display = "block";
             document.getElementById('seals-container').style.display = "flex";
             document.getElementById('input-form').style.display = "none";
+            document.getElementById('drop-zone').innerHTML = "シールを<br>置いてください";
             renderSeals(q.opts);
-            document.getElementById('drop-zone').innerHTML = "ここにドロップ";
         }
     }
+
     function renderSeals(opts) {
         const container = document.getElementById('seals-container'); container.innerHTML = "";
         const row1 = document.createElement('div'); row1.className = 'seal-row';
@@ -74,14 +75,14 @@
         opts.forEach((opt, i) => {
             const s = document.createElement('div'); s.className = 'seal'; s.innerText = opt;
             s.addEventListener('touchstart', onStart, {passive: false});
-            (i < 3) ? row1.appendChild(s) : row2.appendChild(s);
+            if(i < 3) row1.appendChild(s); else row2.appendChild(s);
         });
         container.appendChild(row1); if(opts.length > 3) container.appendChild(row2);
     }
+
     let active = null;
     function onStart(e) {
-        e.preventDefault();
-        active = e.target.cloneNode(true); document.body.appendChild(active);
+        e.preventDefault(); active = e.target.cloneNode(true); document.body.appendChild(active);
         active.style.position = 'fixed'; active.style.zIndex = '2000';
         updatePos(e.touches[0]);
         document.ontouchmove = (ev) => { ev.preventDefault(); updatePos(ev.touches[0]); };
@@ -92,12 +93,14 @@
                 const q = questions[currentIdx];
                 let c = (q.type==="logic") ? (q.red === active.innerText ? "bg-red" : "bg-blue") : "bg-yellow";
                 document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
+                answers[q.id] = active.innerText;
                 document.getElementById('next-btn').style.display = "block";
             }
             active.remove(); document.ontouchmove = null;
         };
     }
     function updatePos(t) { active.style.left = (t.clientX-35)+'px'; active.style.top = (t.clientY-35)+'px'; }
+
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
         document.getElementById('dot-grip').className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
@@ -108,4 +111,27 @@
         if (h > 0 && w > 0) {
             const bmi = (w/(h*h)).toFixed(1);
             document.getElementById('bmi-val').innerText = bmi;
-            document.getElementById('dot-bmi').className = "status-dot "
+            document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
+        }
+    }
+
+    function goNext() {
+        if (currentIdx < questions.length - 1) {
+            currentIdx++; load();
+        } else {
+            // 全問終了時にデータを送信
+            const finalData = {
+                done: true,
+                q_answers: answers,
+                grip: document.getElementById('grip').value,
+                bmi: document.getElementById('bmi-val').innerText,
+                timestamp: new Date().toISOString()
+            };
+            window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: finalData }, "*");
+            document.getElementById('app').innerHTML = "<div style='display:flex;justify-content:center;align-items:center;height:100vh;'>データを保存中...</div>";
+        }
+    }
+    load();
+</script>
+</body>
+</html>

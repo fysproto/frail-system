@@ -52,49 +52,44 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
-    # 状態管理：データを受け取ったか
-    if "submitted" not in st.session_state:
-        st.session_state.submitted = False
-
-    # CSS: 赤枠の警告（.stAlert）を非表示にする設定
+    # 状態管理
+    if "is_saved" not in st.session_state:
+        st.session_state.is_saved = False
+    
+    # CSS: 赤枠警告を隠し、測定画面に没入させる
     st.markdown("""
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
             .main .block-container { padding: 0 !important; margin: 0 !important; }
             iframe { width: 100vw !important; height: 100vh !important; border: none !important; }
-            /* 赤枠エラーを含む全ての警告メッセージを非表示にする */
             [data-testid="stNotification"], .stAlert { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # 1. まだ送信していない場合
-    if not st.session_state.submitted:
+    # まだ保存が完了していない（測定中）
+    if not st.session_state.is_saved:
         try:
             with open("index.html", "r", encoding="utf-8") as f:
-                html_content = f.read()
+                html_code = f.read()
             
-            # HTMLを表示し、結果を直接受け取る
-            res = components.html(html_content, height=1200)
+            # 3問の測定画面を表示
+            res = components.html(html_code, height=1200)
             
-            # データが届いたらセッションに保存して画面を切り替える
-            if res:
-                st.session_state.saved_data = res
-                st.session_state.submitted = True
+            # HTML側の「最後の次へ」ボタンでデータが送られてきた場合
+            if res is not None and isinstance(res, dict) and "done" in res:
+                save_data_to_drive(res)
+                st.session_state.is_saved = True
                 st.rerun()
-        except FileNotFoundError:
-            st.error("index.htmlが見つかりません。")
-    
-    # 2. 送信が完了した場合
+        except Exception as e:
+            st.error(f"システムエラー: {e}")
+
+    # 保存完了後の画面
     else:
         st.balloons()
-        st.write("## 📋 測定データの保存")
-        with st.spinner("Googleドライブに保存しています..."):
-            try:
-                fname = save_data_to_drive(st.session_state.saved_data)
-                st.success(f"Googleドライブへ保存しました")
-                st.info(f"保存ファイル名: {fname}")
-            except Exception as e:
-                st.error("保存中にエラーが発生しました。")
-        
-        # 指示通り、マイページへ戻る導線に変更
-        st.button("マイページに戻る（準備中）", disabled=True)
+        st.markdown("<div style='text-align:center; padding: 50px 0;'>", unsafe_allow_html=True)
+        st.write("## 🎉 測定結果を保存しました")
+        st.write("Googleドライブにデータが保管されました。")
+        if st.button("マイページへ戻る"):
+            st.session_state.is_saved = False # リセットして戻る（擬似）
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
