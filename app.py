@@ -70,7 +70,7 @@ if creds:
                 html_content = f.read()
             
             # HTMLからのデータ（Message）を受け取る
-res = components.html(html_content, height=1200, scrolling=True, key="frail_component")
+            res = components.html(html_content, height=1200, scrolling=True, key="frail_component")
             
             # データが届いたら保存して完了画面へ
             if res and isinstance(res, dict) and res.get("done"):
