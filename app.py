@@ -9,9 +9,7 @@ from datetime import datetime
 # --- 設定 ---
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-# 【修正ポイント1】URLを「今のもの」に自動取得するように変更
-# これでURLが変わっても二度とエラーにならないわ
-REDIRECT_URI = f"https://{st.nav.get_hostname()}" if hasattr(st, "nav") else "https://frail-app-demo-ezgsggushdcjatydq49smz.streamlit.app/"
+REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
 st.set_page_config(page_title="フレイル予防システム", layout="centered")
 
