@@ -69,7 +69,7 @@ if creds:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
             
-            # HTMLからのデータ(Message)を受け取る
+            # HTMLからのデータ（Message）を受け取る
             res = components.html(html_content, height=1200, scrolling=True, key="frail_component")
             
             # データが届いたら保存して完了画面へ
