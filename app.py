@@ -47,45 +47,47 @@ def save_data_to_drive(data):
     file_metadata = {'name': filename, 'mimeType': 'application/json'}
     media = MediaInMemoryUpload(json.dumps(data, ensure_ascii=False).encode('utf-8'), mimetype='application/json')
     service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    return filename
 
 creds = authenticate_google()
 
 if creds:
-    if "is_saved" not in st.session_state:
-        st.session_state.is_saved = False
+    # 完了フラグ
+    if "is_finished" not in st.session_state:
+        st.session_state.is_finished = False
 
+    # ヘッダーやエラーを隠す
     st.markdown("""
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
-            .main .block-container { padding: 0 !important; margin: 0 !important; }
-            iframe { width: 100vw !important; height: 100vh !important; border: none !important; overflow: hidden; }
+            .main .block-container { padding: 0 !important; }
+            iframe { width: 100vw !important; height: 100vh !important; border: none !important; }
             [data-testid="stNotification"], .stAlert { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    if not st.session_state.is_saved:
+    # 保存が終わっていないなら、何が何でもindex.htmlを出す
+    if not st.session_state.is_finished:
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_code = f.read()
             
-            # 戻り値を待つ。keyを設定することでデータの受け渡しを安定させる
-            res = components.html(html_code, height=1000, key="measurement_screen")
+            # 測定画面（index.html）を強制表示
+            res = components.html(html_code, height=1000)
             
-            if res is not None and isinstance(res, dict) and res.get("done") is True:
-                # データ保存
+            # HTML側から "done": true が送られてきたときだけ保存して完了へ
+            if res and isinstance(res, dict) and res.get("done") is True:
                 save_data_to_drive(res)
-                st.session_state.is_saved = True
+                st.session_state.is_finished = True
                 st.rerun()
         except Exception as e:
             st.error(f"Error: {e}")
+
+    # 保存完了後
     else:
-        # 保存完了後のマイページ導線
         st.balloons()
-        st.markdown("<div style='text-align:center; padding-top: 100px;'>", unsafe_allow_html=True)
-        st.success("### 測定結果の保存が完了しました")
-        # 擬似的なマイページボタン。押すと最初の測定画面にリセットされる設定
+        st.markdown("<div style='text-align:center; padding-top: 50px;'>", unsafe_allow_html=True)
+        st.success("### 測定結果を保存しました")
         if st.button("マイページ（ホーム）へ戻る"):
-            st.session_state.is_saved = False
+            st.session_state.is_finished = False # リセット
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
