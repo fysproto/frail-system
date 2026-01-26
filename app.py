@@ -66,25 +66,30 @@ def save_data_to_drive(data, filename):
 creds = authenticate_google()
 
 if creds:
-    # 1. 画面の構造を根本から作り直すCSS
+    # 1. 上の空白を「マイナスの余白」で無理やり消し去るCSS
     st.markdown("""
         <style>
-            /* 1. Streamlit自体のスクロールを完全に殺し、中身だけに任せる */
+            /* 1. 全体の余白とスクロール設定 */
             html, body, [data-testid="stAppViewContainer"] {
                 overflow: hidden !important;
                 height: 100vh !important;
             }
-            /* 2. 余白をミリ単位でゼロにする */
+            /* 2. 上部の見えない余白を完全に削る(ネガティブマージン) */
             .main .block-container {
-                padding: 0 !important;
-                margin: 0 !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                margin-top: -50px !important; /* ここで上に引き上げます */
                 max-width: 100% !important;
-                height: 100vh !important;
             }
-            /* 3. ヘッダーなどの邪魔者を完全消去 */
-            header, footer { display: none !important; }
+            /* 3. メニューバーやヘッダーを物理的に消滅させる */
+            header[data-testid="stHeader"] {
+                display: none !important;
+            }
+            [data-testid="stVerticalBlock"] {
+                gap: 0 !important;
+            }
             
-            /* 4. HTMLを表示する箱を、スマホ画面と全く同じサイズにする */
+            /* 4. iframeを画面いっぱいに */
             iframe {
                 width: 100vw !important;
                 height: 100vh !important;
@@ -98,12 +103,11 @@ if creds:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # 3. scrolling=True にして、箱の中で「だけ」動けるようにする
-        # これにより、スマホの「更新動作」に邪魔されず、中身が動きます
+        # 3. 高さをしっかり取って、内部スクロールを確実に有効にする
         st.components.v1.html(
             html_content,
-            height=2000, # 中身の高さに合わせて十分確保
-            scrolling=True
+            height=1200,   # もし下がまだ足りなければ1500に増やしてください
+            scrolling=True # これでスマホでの指の動きが中身に伝わります
         )
         
     except FileNotFoundError:
