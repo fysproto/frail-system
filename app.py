@@ -59,33 +59,4 @@ if creds:
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
             .main .block-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
-            html, body, [data-testid="stAppViewContainer"] { overflow: hidden !important; position: fixed; width: 100%; height: 100%; }
-            iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; z-index: 99999; }
-        </style>
-    """, unsafe_allow_html=True)
-
-    if not st.session_state.is_finished:
-        try:
-            with open("index.html", "r", encoding="utf-8") as f:
-                html_content = f.read()
-            
-            # HTMLからのデータ(Message)を受け取る
-            res = components.html(html_content, height=1200, scrolling=True, key="frail_component")
-            
-            # データが届いたら保存して完了画面へ
-            if res and isinstance(res, dict) and res.get("done"):
-                filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                save_data_to_drive(res, filename)
-                st.session_state.is_finished = True
-                st.rerun()
-
-        except FileNotFoundError:
-            st.error("index.html が見つかりません。")
-    else:
-        st.balloons()
-        st.markdown("<div style='text-align:center; padding-top:100px;'>", unsafe_allow_html=True)
-        st.success("### 測定データを保存しました")
-        if st.button("もう一度測定する"):
-            st.session_state.is_finished = False
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+            html, body, [data-testid="stAppViewContainer"
