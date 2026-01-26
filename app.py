@@ -66,38 +66,37 @@ def save_data_to_drive(data, filename):
 creds = authenticate_google()
 
 if creds:
-    # ログイン成功後の画面
-    st.sidebar.write(f"ログイン中")
-    if st.sidebar.button("ログアウト"):
-        del st.session_state.credentials
-        st.rerun()
+    # 1. スマホの画面にフィットさせ、余白を完全に削る魔法のCSS
+    st.markdown("""
+        <style>
+            /* 画面全体の余白をゼロにする */
+            .main .block-container {
+                padding: 0 !important;
+                max-width: 100% !important;
+            }
+            /* ヘッダーやツールバーを非表示にして画面を広く使う */
+            header, footer { visibility: hidden; }
+            
+            /* iframe（HTMLを入れる箱）を画面いっぱいにする */
+            iframe {
+                width: 100%;
+                height: 100vh; /* 画面の高さ100%に固定 */
+                border: none;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
-# index.html (UI) の読み込み
+    # 2. index.html の読み込み
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         
-        # 1. スマホの画面いっぱいに広げるためのCSS
-        st.markdown("""
-            <style>
-                .main .block-container {
-                    padding: 0;
-                    max-width: 100%;
-                }
-                /* iframe自体のスクロールを有効にし、Streamlitの余白を消す */
-                iframe {
-                    width: 100%;
-                    height: 90vh; /* 画面の高さの90%を使う */
-                    border: none;
-                }
-            </style>
-        """, unsafe_allow_html=True)
-
-        # 2. scrolling=True で中身のスクロールを許可する
+        # 3. 画面に表示（高さを auto に近い挙動にするために少し大きめに設定）
+        # scrolling=False にすることで、二重スクロールを防ぎます
         components.html(
             html_content, 
-            height=1200,   # 中身が長い場合はここをさらに大きく（1500など）してください
-            scrolling=True # これが重要です！
+            height=800,  # スマホの一般的な高さに合わせる
+            scrolling=False
         )
         
     except FileNotFoundError:
