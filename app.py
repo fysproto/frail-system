@@ -6,7 +6,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
 
-# --- 基本設定 ---
+# --- 設定 ---
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
@@ -35,7 +35,6 @@ def authenticate_google():
         else:
             flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
             auth_url, _ = flow.authorization_url(prompt='consent')
-            st.title("フレイル測定アプリ")
             st.link_button("Googleアカウントでログイン", auth_url)
             return None
     return st.session_state.credentials
@@ -46,48 +45,44 @@ def save_data_to_drive(data):
     filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     file_metadata = {'name': filename, 'mimeType': 'application/json'}
     media = MediaInMemoryUpload(json.dumps(data, ensure_ascii=False).encode('utf-8'), mimetype='application/json')
-    service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    service.files().create(body=file_metadata, media_body=media).execute()
 
 creds = authenticate_google()
 
 if creds:
-    # 完了フラグ
     if "is_finished" not in st.session_state:
         st.session_state.is_finished = False
 
-    # ヘッダーやエラーを隠す
+    # 余白削除
     st.markdown("""
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
             .main .block-container { padding: 0 !important; }
             iframe { width: 100vw !important; height: 100vh !important; border: none !important; }
-            [data-testid="stNotification"], .stAlert { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # 保存が終わっていないなら、何が何でもindex.htmlを出す
     if not st.session_state.is_finished:
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_code = f.read()
             
-            # 測定画面（index.html）を強制表示
-            res = components.html(html_code, height=1000)
+            # 安定版のHTMLを表示
+            res = components.html(html_code, height=900)
             
-            # HTML側から "done": true が送られてきたときだけ保存して完了へ
+            # HTMLから最終データが来たら保存
             if res and isinstance(res, dict) and res.get("done") is True:
                 save_data_to_drive(res)
                 st.session_state.is_finished = True
                 st.rerun()
         except Exception as e:
             st.error(f"Error: {e}")
-
-    # 保存完了後
     else:
+        # 保存完了画面
         st.balloons()
-        st.markdown("<div style='text-align:center; padding-top: 50px;'>", unsafe_allow_html=True)
-        st.success("### 測定結果を保存しました")
+        st.markdown("<div style='text-align:center; padding-top:100px;'>", unsafe_allow_html=True)
+        st.success("### 測定データを保存しました")
         if st.button("マイページ（ホーム）へ戻る"):
-            st.session_state.is_finished = False # リセット
+            st.session_state.is_finished = False
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
