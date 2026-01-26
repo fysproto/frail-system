@@ -5,7 +5,6 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
-import time
 
 # --- 設定 ---
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
@@ -32,33 +31,29 @@ def authenticate_google():
             st.session_state.credentials = flow.credentials
             st.query_params.clear()
             st.rerun()
-            return st.session_state.credentials
         else:
             flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
             auth_url, _ = flow.authorization_url(prompt='consent')
             st.title("フレイル測定アプリ")
-            st.write("Googleアカウントでのログインが必要です。")
             st.link_button("Googleアカウントでログイン", auth_url)
             return None
     return st.session_state.credentials
 
-def save_data_to_drive(data, filename):
+def save_data_to_drive(data):
     creds = st.session_state.credentials
     service = build('drive', 'v3', credentials=creds)
+    filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     file_metadata = {'name': filename, 'mimeType': 'application/json'}
     media = MediaInMemoryUpload(json.dumps(data, ensure_ascii=False).encode('utf-8'), mimetype='application/json')
-    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    return file.get('id')
+    service.files().create(body=file_metadata, media_body=media).execute()
 
 creds = authenticate_google()
 
 if creds:
     if "is_finished" not in st.session_state:
         st.session_state.is_finished = False
-    
-    if "check_count" not in st.session_state:
-        st.session_state.check_count = 0
 
+    # あなたの指定した「安定版レイアウト用CSS」
     st.markdown("""
         <style>
             [data-testid="stHeader"], header, footer { display: none !important; }
@@ -73,36 +68,19 @@ if creds:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
             
-            # チェック回数を増やしながらコンポーネントを再描画
-            st.session_state.check_count += 1
+            # コンポーネント実行
+            res = components.html(html_content, height=1200)
             
-            # HTMLからのデータ(Message)を受け取る
-            res = components.html(
-                html_content, 
-                height=1200, 
-                scrolling=True,
-                key=f"frail_{st.session_state.check_count}"
-            )
-            
-            # データが届いたら保存して完了画面へ
+            # データが届いたか判定
             if res and isinstance(res, dict) and res.get("done"):
-                filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                save_data_to_drive(res, filename)
+                save_data_to_drive(res)
                 st.session_state.is_finished = True
                 st.rerun()
-            else:
-                # データが来ていない場合は2秒後に再チェック
-                time.sleep(2)
-                st.rerun()
-
-        except FileNotFoundError:
-            st.error("index.html が見つかりません。")
+        except Exception as e:
+            st.error(f"システムエラー: {e}")
     else:
         st.balloons()
-        st.markdown("<div style='text-align:center; padding-top:100px;'>", unsafe_allow_html=True)
-        st.success("### 測定データを保存しました")
-        if st.button("もう一度測定する"):
+        st.success("データを保存しました。")
+        if st.button("戻る"):
             st.session_state.is_finished = False
-            st.session_state.check_count = 0
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
