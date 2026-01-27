@@ -49,6 +49,19 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
+    # クエリパラメータでデータ受信をチェック
+    if "data" in st.query_params:
+        try:
+            data_str = st.query_params["data"]
+            data = json.loads(data_str)
+            save_data_to_drive(data)
+            st.session_state.view = "result"
+            st.session_state.saved_data = data
+            st.query_params.clear()
+            st.rerun()
+        except:
+            pass
+    
     if "view" not in st.session_state:
         st.session_state.view = "mypage"
 
@@ -78,14 +91,9 @@ if creds:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
             
-            # HTMLコンポーネントを表示。戻り値(res)でイベントをキャッチ
-            res = components.html(html_content, height=1200)
+            # HTMLコンポーネントを表示
+            components.html(html_content, height=1200)
             
-            # 完了イベントが届いたら保存して遷移
-            if res and "is_done" in res:
-                save_data_to_drive(res)
-                st.session_state.view = "result"
-                st.rerun()
         except Exception as e:
             st.error(f"システムエラー: {e}")
 

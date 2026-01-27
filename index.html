@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@latest/dist/streamlit-component-lib.js"></script>
     <style>
         html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; }
         #app { display: flex; flex-direction: column; height: 100%; }
@@ -52,11 +51,6 @@
     const container = document.getElementById('seals-container');
     const inputForm = document.getElementById('input-form');
     const nextBtn = document.getElementById('next-btn');
-
-    // Streamlit Component初期化
-    if (typeof Streamlit !== 'undefined') {
-        Streamlit.setFrameHeight(1200);
-    }
 
     function load() {
         const q = questions[currentIdx];
@@ -128,12 +122,9 @@
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
             allAnswers.is_done = true;
 
-            // Streamlit Component APIで送信
-            if (typeof Streamlit !== 'undefined') {
-                Streamlit.setComponentValue(allAnswers);
-            } else {
-                alert("【デバッグ】測定終了。データを収集しました:\n" + JSON.stringify(allAnswers, null, 2));
-            }
+            // URLクエリパラメータにデータを載せてリダイレクト
+            const dataStr = encodeURIComponent(JSON.stringify(allAnswers));
+            window.top.location.href = '/?data=' + dataStr;
         } else {
             currentIdx++; load();
         }
