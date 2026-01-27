@@ -187,8 +187,7 @@ function goNext() {
 
         // ★ Streamlit に確実に届く方法（query params）
         const payload = encodeURIComponent(JSON.stringify(allAnswers));
-        window.location.href =
-            window.location.pathname + "?done=1&data=" + payload;
+        window.location.href = `/?done=1&data=${payload}`;
     } else {
         currentIdx++;
         load();
