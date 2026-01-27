@@ -1,4 +1,3 @@
-st.write("DEBUG query_params:", dict(st.query_params))
 import streamlit as st
 import streamlit.components.v1 as components
 import json
@@ -6,6 +5,7 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
+st.write("DEBUG query_params:", dict(st.query_params))
 
 # ===============================
 # 設定
