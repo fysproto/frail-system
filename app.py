@@ -6,43 +6,26 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
 
-# ===============================
+# =========================
 # 設定
-# ===============================
-SCOPES = ['https://www.googleapis.com/auth/drive.file']
+# =========================
+SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
 st.set_page_config(page_title="フレイル予防システム", layout="centered")
 
-# ===============================
-# ① query を最優先で回収
-# ===============================
-st.sidebar.write("DEBUG query_params:", dict(st.query_params))
-
-if st.query_params.get("done") == "1":
-    try:
-        data = json.loads(st.query_params.get("data"))
-        st.session_state["_pending_data"] = data
-        st.sidebar.write("DEBUG pending_data SET")
-        st.query_params.pop("done", None)
-        st.query_params.pop("data", None)
-    except Exception as e:
-        st.sidebar.write("DEBUG json error:", e)
-
-# ===============================
+# =========================
 # Google 認証
-# ===============================
+# =========================
 def authenticate_google():
-    if 'credentials' not in st.session_state:
+    if "credentials" not in st.session_state:
         client_config = {
             "web": {
                 "client_id": st.secrets["google_client_id"],
-                "project_id": "frail-app-project",
+                "client_secret": st.secrets["google_client_secret"],
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "client_secret": st.secrets["google_client_secret"],
-                "redirect_uris": [REDIRECT_URI]
+                "redirect_uris": [REDIRECT_URI],
             }
         }
 
@@ -50,69 +33,85 @@ def authenticate_google():
             flow = Flow.from_client_config(
                 client_config,
                 scopes=SCOPES,
-                redirect_uri=REDIRECT_URI
+                redirect_uri=REDIRECT_URI,
             )
             flow.fetch_token(code=st.query_params["code"])
             st.session_state.credentials = flow.credentials
             st.query_params.clear()
             st.rerun()
         else:
-            st.title("フレイル測定アプリ")
             flow = Flow.from_client_config(
                 client_config,
                 scopes=SCOPES,
-                redirect_uri=REDIRECT_URI
+                redirect_uri=REDIRECT_URI,
             )
-            auth_url, _ = flow.authorization_url(prompt='consent')
+            auth_url, _ = flow.authorization_url(prompt="consent")
+            st.title("フレイル測定アプリ")
             st.link_button("Googleアカウントでログイン", auth_url)
             return None
 
     return st.session_state.credentials
 
-# ===============================
+# =========================
 # Drive 保存
-# ===============================
+# =========================
 def save_data_to_drive(data):
-    st.sidebar.write("DEBUG save_data_to_drive CALLED")
-    st.sidebar.write("DEBUG saving data:", data)
+    service = build("drive", "v3", credentials=st.session_state.credentials)
+    filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 
-    service = build('drive', 'v3', credentials=st.session_state.credentials)
-
-    filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    st.sidebar.write("DEBUG filename:", filename)
+    csv = "key,value\n"
+    for k, v in data.items():
+        csv += f"{k},{v}\n"
 
     media = MediaInMemoryUpload(
-        json.dumps(data, ensure_ascii=False).encode('utf-8'),
-        mimetype='application/json'
+        csv.encode("utf-8"),
+        mimetype="text/csv"
     )
 
     service.files().create(
-        body={'name': filename},
+        body={"name": filename},
         media_body=media
     ).execute()
 
-    st.sidebar.write("DEBUG Drive save DONE")
+# =========================
+# ① HTML → query 受信（最優先）
+# =========================
+if st.query_params.get("done") == "1" and "data" in st.query_params:
+    try:
+        st.session_state["_pending_data"] = json.loads(
+            st.query_params.get("data")
+        )
+    except Exception:
+        st.session_state["_pending_data"] = None
 
-# ===============================
-# メイン
-# ===============================
+    st.query_params.clear()
+
+# =========================
+# 認証
+# =========================
 creds = authenticate_google()
 
-if creds:
-    st.sidebar.write("DEBUG creds OK")
+# =========================
+# ② 保存処理（1回だけ）
+# =========================
+if creds and "_pending_data" in st.session_state:
+    save_data_to_drive(st.session_state["_pending_data"])
+    del st.session_state["_pending_data"]
+    st.session_state.view = "mypage"
+    st.rerun()
 
+# =========================
+# 画面制御
+# =========================
+if creds:
     if "view" not in st.session_state:
         st.session_state.view = "mypage"
 
-    # ★ 未保存データがあれば必ずここで保存
-    if "_pending_data" in st.session_state:
-        save_data_to_drive(st.session_state["_pending_data"])
-        del st.session_state["_pending_data"]
-        st.session_state.view = "mypage"
-
-    # --- マイページ ---
+    # ---- マイページ ----
     if st.session_state.view == "mypage":
         st.title("🏠 マイページ")
+        st.write("健康状態をチェックしましょう。")
+
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📏 測定を開始する", use_container_width=True):
@@ -121,19 +120,26 @@ if creds:
         with col2:
             st.button("📋 過去の履歴（準備中）", use_container_width=True)
 
-    # --- 測定画面 ---
+    # ---- 測定画面 ----
     elif st.session_state.view == "measure":
-        st.markdown("""
+        st.markdown(
+            """
             <style>
-                [data-testid="stHeader"], header, footer { display: none !important; }
-                .main .block-container { padding: 0 !important; margin: 0 !important; }
-                iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; }
+            [data-testid="stHeader"], header, footer { display:none !important; }
+            .main .block-container { padding:0 !important; margin:0 !important; }
+            iframe {
+                position:fixed;
+                top:0; left:0;
+                width:100vw !important;
+                height:100vh !important;
+                border:none !important;
+            }
             </style>
-        """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
 
-        try:
-            with open("index.html", "r", encoding="utf-8") as f:
-                html = f.read()
-            components.html(html, height=1200)
-        except Exception as e:
-            st.error(e)
+        with open("index.html", "r", encoding="utf-8") as f:
+            html = f.read()
+
+        components.html(html, height=1200)
