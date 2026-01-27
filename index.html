@@ -85,14 +85,13 @@
     ];
 
 let currentIdx = 0;
-    // ★ 15問になっても自動でデータを溜めるバケツ
+let currentIdx = 0;
     let allAnswers = {};
 
     const questions = [
         { id: "q1_community", title: "地域活動に参加していますか？", item: "🏠", color: "bg-blue" },
         { id: "q2_walking", title: "最近、歩くのが遅くなった？", item: "🚶", color: "bg-green" },
         { id: "q3_measurement", title: "握力とBMIを測定しよう", item: "⚖️", color: "bg-orange" }
-        // ★ 4問目以降はここに足していくだけでOK！
     ];
 
     function load() {
@@ -101,11 +100,13 @@ let currentIdx = 0;
         document.getElementById('step-info').innerText = `Step ${currentIdx + 1} / ${questions.length}`;
         
         const stage = document.getElementById('main-stage');
+        // ここで画面を組み立てるわ
         stage.innerHTML = `
             <div id="drop-zone">ココに運んで</div>
             <div id="item-box">
                 <div class="active-item ${q.color}" id="active-item" 
-                     ontouchstart="onStart(event)" onmousedown="onStart(event)">${q.item}</div>
+                     ontouchstart="onStart(event)" onmousedown="onStart(event)"
+                     style="position: static;">${q.item}</div>
             </div>
             ${q.id === 'q3_measurement' ? `
                 <div id="input-grip" class="input-card">
@@ -119,85 +120,88 @@ let currentIdx = 0;
                     <div style="margin-top:5px; font-weight:bold;">BMI: <span id="bmi-val">--</span></div>
                 </div>
             ` : ''}
-            <button id="next-btn" onclick="goNext()">次へ進む</button>
+            <button id="next-btn" onclick="goNext()" style="display:none;">次へ進む</button>
         `;
     }
 
+    // ★大事：最初にこの関数を呼ばないと画面が真っ白になるわ！
+    load();
+
     function goNext() {
         const currentQ = questions[currentIdx];
-        
-        // ★ 自動データ回収ロジック
-        // 画面にあるinput（握力、身長、体重）を全部拾う
         const inputs = document.querySelectorAll('#main-stage input');
         inputs.forEach(input => {
             allAnswers[input.id] = input.value;
         });
-
-        // BMIの数値を拾う
         const bmiVal = document.getElementById('bmi-val');
         if (bmiVal) allAnswers['bmi'] = bmiVal.innerText;
 
-        // ドロップされたかどうかの判定（q1, q2などの質問IDで保存）
         const isDropped = document.getElementById('drop-zone').querySelector('.active-item');
         allAnswers[currentQ.id] = isDropped ? "はい" : "いいえ";
 
         currentIdx++;
-
         if (currentIdx < questions.length) {
             load();
         } else {
-            // ★ 最終送信：全データをパラメータ化
             const url = new URL(window.location.href);
             Object.keys(allAnswers).forEach(key => {
                 url.searchParams.set(key, allAnswers[key]);
             });
-            alert("全ての回答を送信します。");
             window.location.href = url.href; 
         }
     }
 
-    // --- ユーティリティ関数（ドラッグ＆計算） ---
     let active, isDragging = false;
     function onStart(e) {
         isDragging = true;
         active = e.target;
+        active.style.position = "absolute"; // ドラッグ開始時に絶対配置に切り替え
         const t = e.touches ? e.touches[0] : e;
         updatePos(t);
+        
         document.onmousemove = document.ontouchmove = (ev) => {
             if(!isDragging) return;
             const tt = ev.touches ? ev.touches[0] : ev;
             updatePos(tt);
         };
+        
         document.onmouseup = document.ontouchend = () => {
+            if(!isDragging) return;
             isDragging = false;
             const dz = document.getElementById('drop-zone').getBoundingClientRect();
             const it = active.getBoundingClientRect();
+            
+            // 判定：ドロップゾーンに入ったか
             if (it.left > dz.left && it.right < dz.right && it.top > dz.top && it.bottom < dz.bottom) {
+                document.getElementById('drop-zone').innerText = ""; // 文字を消す
                 document.getElementById('drop-zone').appendChild(active);
                 active.style.position = "static";
                 document.getElementById('next-btn').style.display = "block";
             }
+            document.onmousemove = document.ontouchmove = null;
         };
     }
+
     function updatePos(t) { 
-        active.style.position = "absolute";
+        if(!active) return;
         active.style.left = (t.clientX - 34) + 'px'; 
         active.style.top = (t.clientY - 34) + 'px'; 
     }
+
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
         const dot = document.getElementById('dot-grip');
-        if (isNaN(val)) dot.className = "status-dot";
-        else dot.className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
+        if (dot) dot.className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
     }
+
     function calcBMI() {
         const h = parseFloat(document.getElementById('height').value) / 100;
         const w = parseFloat(document.getElementById('weight').value);
         const bmiVal = document.getElementById('bmi-val');
         const dot = document.getElementById('dot-bmi');
-        if (h > 0 && w > 0) {
+        if (h > 0 && w > 0 && bmiVal) {
             const bmi = (w / (h * h)).toFixed(1);
             bmiVal.innerText = bmi;
-            dot.className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
+            if(dot) dot.className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
         }
     }
