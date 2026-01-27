@@ -5,7 +5,6 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
-st.write("DEBUG query_params:", dict(st.query_params))
 
 # ===============================
 # 設定
@@ -16,17 +15,19 @@ REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 st.set_page_config(page_title="フレイル予防システム", layout="centered")
 
 # ===============================
-# ① 完了データを最優先で回収
-# （認証より先にやるのが重要）
+# ① query を最優先で回収
 # ===============================
+st.sidebar.write("DEBUG query_params:", dict(st.query_params))
+
 if st.query_params.get("done") == "1":
     try:
         data = json.loads(st.query_params.get("data"))
         st.session_state["_pending_data"] = data
+        st.sidebar.write("DEBUG pending_data SET")
         st.query_params.pop("done", None)
         st.query_params.pop("data", None)
     except Exception as e:
-        st.error(f"データ解析エラー: {e}")
+        st.sidebar.write("DEBUG json error:", e)
 
 # ===============================
 # Google 認証
@@ -56,13 +57,13 @@ def authenticate_google():
             st.query_params.clear()
             st.rerun()
         else:
+            st.title("フレイル測定アプリ")
             flow = Flow.from_client_config(
                 client_config,
                 scopes=SCOPES,
                 redirect_uri=REDIRECT_URI
             )
             auth_url, _ = flow.authorization_url(prompt='consent')
-            st.title("フレイル測定アプリ")
             st.link_button("Googleアカウントでログイン", auth_url)
             return None
 
@@ -72,13 +73,13 @@ def authenticate_google():
 # Drive 保存
 # ===============================
 def save_data_to_drive(data):
+    st.sidebar.write("DEBUG save_data_to_drive CALLED")
+    st.sidebar.write("DEBUG saving data:", data)
+
     service = build('drive', 'v3', credentials=st.session_state.credentials)
 
     filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    file_metadata = {
-        'name': filename,
-        'mimeType': 'application/json'
-    }
+    st.sidebar.write("DEBUG filename:", filename)
 
     media = MediaInMemoryUpload(
         json.dumps(data, ensure_ascii=False).encode('utf-8'),
@@ -86,21 +87,24 @@ def save_data_to_drive(data):
     )
 
     service.files().create(
-        body=file_metadata,
+        body={'name': filename},
         media_body=media
     ).execute()
 
+    st.sidebar.write("DEBUG Drive save DONE")
+
 # ===============================
-# メイン処理
+# メイン
 # ===============================
 creds = authenticate_google()
 
 if creds:
-    # 初期画面は必ずマイページ
+    st.sidebar.write("DEBUG creds OK")
+
     if "view" not in st.session_state:
         st.session_state.view = "mypage"
 
-    # ★ 未保存データがあればここで保存
+    # ★ 未保存データがあれば必ずここで保存
     if "_pending_data" in st.session_state:
         save_data_to_drive(st.session_state["_pending_data"])
         del st.session_state["_pending_data"]
@@ -109,14 +113,11 @@ if creds:
     # --- マイページ ---
     if st.session_state.view == "mypage":
         st.title("🏠 マイページ")
-        st.write("健康状態をチェックしましょう。")
-
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📏 測定を開始する", use_container_width=True):
                 st.session_state.view = "measure"
                 st.rerun()
-
         with col2:
             st.button("📋 過去の履歴（準備中）", use_container_width=True)
 
@@ -126,23 +127,13 @@ if creds:
             <style>
                 [data-testid="stHeader"], header, footer { display: none !important; }
                 .main .block-container { padding: 0 !important; margin: 0 !important; }
-                iframe {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    border: none !important;
-                    z-index: 9999;
-                }
+                iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; }
             </style>
         """, unsafe_allow_html=True)
 
         try:
             with open("index.html", "r", encoding="utf-8") as f:
-                html_content = f.read()
-
-            components.html(html_content, height=1200)
-
+                html = f.read()
+            components.html(html, height=1200)
         except Exception as e:
-            st.error(f"システムエラー: {e}")
+            st.error(e)
