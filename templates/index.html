@@ -8,38 +8,39 @@
         #app { display: flex; flex-direction: column; height: 100%; }
         header { height: 70px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; }
         #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-        #drop-zone { width: 150px; height: 150px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-size: 0.8rem; }
-        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; animation: pop 0.2s; }
+        #drop-zone { width: 160px; height: 160px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; font-size: 0.9rem; }
+        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; font-size: 1.1rem; }
         #seals-container { height: 180px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 10px 0; }
-        .seal { width: 68px; height: 68px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-        #input-form { display: none; width: 90%; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-        .input-group input { width: 80px; padding: 8px; font-size: 1.1rem; border: 1px solid #ddd; border-radius: 5px; text-align: right; }
-        .status-dot { width: 25px; height: 25px; border-radius: 50%; background: #ddd; }
+        .seal-row { display: flex; gap: 12px; justify-content: center; width: 100%; }
+        .seal { width: 75px; height: 75px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .input-group { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; font-size: 1.1rem; }
+        .input-group input { width: 100px; padding: 10px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 8px; text-align: right; }
+        .status-dot { width: 30px; height: 30px; border-radius: 50%; background: #ddd; }
         .bg-blue { background: #007bff !important; } .bg-red { background: #dc3545 !important; } .bg-yellow { background: #ffc107 !important; color: #000; }
-        #next-btn { display: none; margin: 10px auto; padding: 12px 50px; border-radius: 25px; border: none; background: #28a745; color: white; font-weight: bold; }
-        @keyframes pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+        #next-btn { display: none; margin: 20px auto; padding: 15px 60px; border-radius: 30px; border: none; background: #28a745; color: white; font-size: 1.2rem; font-weight: bold; }
     </style>
 </head>
 <body ontouchmove="event.preventDefault()">
 <div id="app">
-    <header><div id="q-progress" style="font-size:0.7rem; color:#6c757d;"></div><div id="q-text" style="font-weight:bold; font-size:0.9rem; padding:0 10px;"></div></header>
+    <header><div id="q-progress" style="font-size:0.8rem; color:#6c757d;"></div><div id="q-text" style="font-weight:bold; font-size:1.1rem;"></div></header>
     <div id="main-stage">
         <div id="drop-zone-wrap"><div id="drop-zone">ここにドロップ</div></div>
         <div id="input-form">
             <div class="input-group"><span>握力 (kg)</span><input type="number" id="grip" oninput="judgeGrip()"><div id="dot-grip" class="status-dot"></div></div>
             <div class="input-group"><span>身長 (cm)</span><input type="number" id="height" oninput="calcBMI()"><div></div></div>
             <div class="input-group"><span>体重 (kg)</span><input type="number" id="weight" oninput="calcBMI()"><div></div></div>
-            <div class="input-group"><span>BMI</span><span id="bmi-val" style="font-weight:bold;">--</span><div id="dot-bmi" class="status-dot"></div></div>
+            <div class="input-group"><span>BMI</span><span id="bmi-val">--</span><div id="dot-bmi" class="status-dot"></div></div>
         </div>
         <button id="next-btn" onclick="goNext()">次へ進む</button>
     </div>
     <div id="seals-container"></div>
 </div>
 <script>
+    // (質問データとロジックは以前と同じ)
     const questions = [
-        { id: "q12", text: "Q12. 地域活動に参加していますか？", opts: ["週1以上", "月1以上", "年数回", "参加せず"], type: "neutral" },
-        { id: "q7", text: "Q7. 歩く速度が遅くなりましたか？", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
+        { id: "q12", text: "Q12. 地域活動に参加していますか?", opts: ["週1以上", "月1以上", "年数回", "参加せず"], type: "neutral" },
+        { id: "q7", text: "Q7. 歩く速度が遅くなりましたか?", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
         { id: "calc", text: "身体計測", type: "calc" }
     ];
     let currentIdx = 0; let allAnswers = {};
@@ -69,11 +70,13 @@
 
     function renderSeals(opts) {
         container.innerHTML = "";
+        const row = document.createElement('div'); row.className = 'seal-row';
         opts.forEach(opt => {
             const s = document.createElement('div'); s.className = 'seal'; s.innerText = opt;
             s.addEventListener('touchstart', onStart, {passive: false});
-            container.appendChild(s);
+            row.appendChild(s);
         });
+        container.appendChild(row);
     }
 
     let active = null;
@@ -86,15 +89,15 @@
             const t = ev.changedTouches[0]; const r = dropZone.getBoundingClientRect();
             if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) {
                 const q = questions[currentIdx];
-                let c = "bg-yellow";
-                if(q.type==="logic") c = (q.red === active.innerText) ? "bg-red" : "bg-blue";
+                let c = (q.type==="logic") ? (q.red === active.innerText ? "bg-red" : "bg-blue") : "bg-yellow";
                 dropZone.innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
                 allAnswers[q.id] = active.innerText; nextBtn.style.display = "block";
             }
             active.remove(); document.ontouchmove = null;
         };
     }
-    function updatePos(t) { active.style.left = (t.clientX - 34) + 'px'; active.style.top = (t.clientY - 34) + 'px'; }
+    function updatePos(t) { active.style.left = (t.clientX - 37) + 'px'; active.style.top = (t.clientY - 37) + 'px'; }
+
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
         document.getElementById('dot-grip').className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
@@ -119,7 +122,7 @@
                 body: JSON.stringify(allAnswers)
             })
             .then(res => res.json())
-            .then(res => { if(res.status==='success'){ alert("保存しました！"); window.location.href="/"; } });
+            .then(res => { if(res.status==='success') window.location.href="/success"; });
         } else { currentIdx++; load(); }
     }
     load();
