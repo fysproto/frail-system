@@ -50,8 +50,18 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
+    # ★ ここが生命線：URLパラメータに回答データ（q12など）が入っているかチェック
+    params = st.query_params.to_dict()
+
     if "view" not in st.session_state:
         st.session_state.view = "mypage"
+
+    # もしURLに「測定完了(is_done)」のフラグが立っていたら、強制的に保存画面へ
+    if params.get("is_done") == "true":
+        save_data_to_drive(params)
+        st.query_params.clear() # URLを掃除
+        st.session_state.view = "result"
+        st.rerun()
 
     # --- マイページ ---
     if st.session_state.view == "mypage":
@@ -71,25 +81,13 @@ if creds:
             <style>
                 [data-testid="stHeader"], header, footer { display: none !important; }
                 .main .block-container { padding: 0 !important; margin: 0 !important; }
-                /* iframeを最上部に固定してズレを解消 */
-                iframe { 
-                    position: fixed; top: 0; left: 0; 
-                    width: 100vw !important; height: 100vh !important; 
-                    border: none !important; z-index: 9999;
-                }
+                iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; z-index: 9999; }
             </style>
         """, unsafe_allow_html=True)
-
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
-            # postMessageを受け取るためのコンポーネント
-            res = components.html(html_content, height=2000)
-            
-            if res and "is_done" in res:
-                save_data_to_drive(res)
-                st.session_state.view = "result"
-                st.rerun()
+            components.html(html_content, height=2000)
         except Exception as e:
             st.error(f"システムエラー: {e}")
 
