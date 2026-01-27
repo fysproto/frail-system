@@ -50,42 +50,41 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
-    # 状態管理（どの画面を表示するか）
     if "view" not in st.session_state:
-        st.session_state.view = "mypage"  # 初期値はマイページ
+        st.session_state.view = "mypage"
 
-    # --- マイページ画面 ---
+    # --- マイページ ---
     if st.session_state.view == "mypage":
         st.title("🏠 マイページ")
         st.write("ようこそ！あなたの健康状態をチェックしましょう。")
-        
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📏 測定を開始する", use_container_width=True):
                 st.session_state.view = "measure"
                 st.rerun()
         with col2:
-            if st.button("📋 過去の履歴（準備中）", use_container_width=True):
-                st.info("過去の履歴表示機能は現在開発中です。")
+            st.button("📋 過去の履歴（準備中）", use_container_width=True)
 
-    # --- 測定画面（HTML表示） ---
+    # --- 測定画面 ---
     elif st.session_state.view == "measure":
-        # HTMLをフルスクリーンで出すためのCSS
         st.markdown("""
             <style>
                 [data-testid="stHeader"], header, footer { display: none !important; }
-                .main .block-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
-                html, body, [data-testid="stAppViewContainer"] { overflow: hidden !important; position: fixed; width: 100%; height: 100%; }
-                iframe { width: 100vw !important; height: 100vh !important; border: none !important; }
+                .main .block-container { padding: 0 !important; margin: 0 !important; }
+                /* iframeを最上部に固定してズレを解消 */
+                iframe { 
+                    position: fixed; top: 0; left: 0; 
+                    width: 100vw !important; height: 100vh !important; 
+                    border: none !important; z-index: 9999;
+                }
             </style>
         """, unsafe_allow_html=True)
 
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
-            
-            # HTMLからのメッセージ（postMessage）を待つ
-            res = components.html(html_content, height=1200)
+            # postMessageを受け取るためのコンポーネント
+            res = components.html(html_content, height=2000)
             
             if res and "is_done" in res:
                 save_data_to_drive(res)
