@@ -12,15 +12,16 @@ REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
 st.set_page_config(page_title="フレイル予防システム", layout="centered")
 
-# --- 認証（成功したロジック） ---
 def authenticate_google():
     if 'credentials' not in st.session_state:
         client_config = {
             "web": {
                 "client_id": st.secrets["google_client_id"],
-                "client_secret": st.secrets["google_client_secret"],
+                "project_id": "frail-app-project",
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_secret": st.secrets["google_client_secret"],
                 "redirect_uris": [REDIRECT_URI]
             }
         }
@@ -35,35 +36,15 @@ def authenticate_google():
             auth_url, _ = flow.authorization_url(prompt='consent')
             st.title("フレイル測定アプリ")
             st.link_button("Googleアカウントでログイン", auth_url)
-            st.stop()
+            return None
     return st.session_state.credentials
 
-# --- 保存処理（成功したロジック） ---
 def save_data_to_drive(data):
     creds = st.session_state.credentials
     service = build('drive', 'v3', credentials=creds)
-    filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    
-    # CSV形式で整理して保存
-    csv_content = "item,value\n"
-    for k, v in data.items():
-        csv_content += f"{k},{v}\n"
-        
-    media = MediaInMemoryUpload(csv_content.encode('utf-8-sig'), mimetype='text/csv')
+    filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    media = MediaInMemoryUpload(json.dumps(data, ensure_ascii=False).encode('utf-8'), mimetype='application/json')
     service.files().create(body={'name': filename}, media_body=media).execute()
-
-# --- URLからのデータ受取ロジック（バイパス案） ---
-if st.query_params.get("done") == "1":
-    raw_data = st.query_params.get("data")
-    if raw_data:
-        try:
-            # 受信データを保存して結果画面へ
-            save_data_to_drive(json.loads(raw_data))
-            st.query_params.clear()
-            st.session_state.view = "result"
-            st.rerun()
-        except Exception as e:
-            st.error(f"保存エラー: {e}")
 
 creds = authenticate_google()
 
@@ -89,14 +70,22 @@ if creds:
             <style>
                 [data-testid="stHeader"], header, footer { display: none !important; }
                 .main .block-container { padding: 0 !important; margin: 0 !important; }
+                iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; z-index: 9999; }
             </style>
         """, unsafe_allow_html=True)
         
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
-            # 画面を表示（heightを大きめにして見切れ防止）
-            components.html(html_content, height=1000)
+            
+            # HTMLコンポーネントを表示。戻り値(res)でイベントをキャッチ
+            res = components.html(html_content, height=1200)
+            
+            # 完了イベントが届いたら保存して遷移
+            if res and "is_done" in res:
+                save_data_to_drive(res)
+                st.session_state.view = "result"
+                st.rerun()
         except Exception as e:
             st.error(f"システムエラー: {e}")
 

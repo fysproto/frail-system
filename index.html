@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@latest/dist/streamlit-component-lib.js"></script>
     <style>
         html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; }
         #app { display: flex; flex-direction: column; height: 100%; }
@@ -42,8 +43,8 @@
 </div>
 <script>
     const questions = [
-        { id: "q12", text: "Q12. 地域活動に参加していますか？", opts: ["週1以上", "月1以上", "年数回", "以前は参加", "参加せず"], type: "neutral" },
-        { id: "q7", text: "Q7. 歩く速度が遅くなりましたか？", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
+        { id: "q12", text: "Q12. 地域活動に参加していますか?", opts: ["週1以上", "月1以上", "年数回", "以前は参加", "参加せず"], type: "neutral" },
+        { id: "q7", text: "Q7. 歩く速度が遅くなりましたか?", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
         { id: "calc", text: "身体計測", type: "calc" }
     ];
     let currentIdx = 0; let allAnswers = {};
@@ -51,6 +52,11 @@
     const container = document.getElementById('seals-container');
     const inputForm = document.getElementById('input-form');
     const nextBtn = document.getElementById('next-btn');
+
+    // Streamlit Component初期化
+    if (typeof Streamlit !== 'undefined') {
+        Streamlit.setFrameHeight(1200);
+    }
 
     function load() {
         const q = questions[currentIdx];
@@ -122,19 +128,11 @@
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
             allAnswers.is_done = true;
 
-            // ★ モック設計における「バックエンドへのイベント通知」
-            // 親(Streamlit)が存在する場合のみデータを投げ、そうでなければアラートを出す
-            try {
-                if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({
-                        type: 'streamlit:setComponentValue',
-                        value: allAnswers
-                    }, '*');
-                } else {
-                    alert("【デバッグ】測定終了。データを収集しました:\n" + JSON.stringify(allAnswers, null, 2));
-                }
-            } catch (e) {
-                alert("送信エラー: " + e.message);
+            // Streamlit Component APIで送信
+            if (typeof Streamlit !== 'undefined') {
+                Streamlit.setComponentValue(allAnswers);
+            } else {
+                alert("【デバッグ】測定終了。データを収集しました:\n" + JSON.stringify(allAnswers, null, 2));
             }
         } else {
             currentIdx++; load();
