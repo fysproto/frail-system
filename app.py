@@ -50,23 +50,13 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
-    # URLから回答が届いているかチェック
-    params = st.query_params.to_dict()
-    
     if "view" not in st.session_state:
         st.session_state.view = "mypage"
-
-    # HTMLからURL経由でデータが届いた瞬間の処理
-    if "is_done" in params:
-        save_data_to_drive(params)
-        st.query_params.clear()
-        st.session_state.view = "result"
-        st.rerun()
 
     # --- マイページ ---
     if st.session_state.view == "mypage":
         st.title("🏠 マイページ")
-        st.write("ようこそ！あなたの健康状態をチェックしましょう。")
+        st.write("健康状態をチェックしましょう。")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📏 測定を開始する", use_container_width=True):
@@ -84,10 +74,19 @@ if creds:
                 iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; z-index: 9999; }
             </style>
         """, unsafe_allow_html=True)
+        
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
-            components.html(html_content, height=1200)
+            
+            # HTMLコンポーネントを表示。戻り値(res)でイベントをキャッチ
+            res = components.html(html_content, height=1200)
+            
+            # 完了イベントが届いたら保存して遷移
+            if res and "is_done" in res:
+                save_data_to_drive(res)
+                st.session_state.view = "result"
+                st.rerun()
         except Exception as e:
             st.error(f"システムエラー: {e}")
 
