@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* 安定版CSSをそのまま維持 */
+        /* 画面全体の固定 */
         html, body { 
             position: fixed; width: 100%; height: 100%; 
             overflow: hidden; touch-action: none; 
@@ -12,16 +12,25 @@
         }
         #app { display: flex; flex-direction: column; height: 100%; }
         header { height: 70px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; }
+        
+        /* メインエリア：高さを固定 */
         #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        
+        /* 回答エリア：常に同じ場所に配置 */
         #drop-zone { width: 150px; height: 150px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-size: 0.8rem; }
-        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; }
+        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; animation: pop 0.2s; }
+        
+        /* 選択肢エリア：高さを180pxに固定して画面の揺れを防ぐ */
         #seals-container { height: 180px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 10px 0; }
         .seal-row { display: flex; gap: 12px; justify-content: center; width: 100%; }
         .seal { width: 68px; height: 68px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+
+        /* 計測入力画面のデザイン */
         #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .input-group { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
         .input-group input { width: 80px; padding: 8px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 5px; text-align: right; }
         .status-dot { width: 25px; height: 25px; border-radius: 50%; background: #ddd; }
+
         .bg-blue { background: #007bff !important; } .bg-red { background: #dc3545 !important; } .bg-yellow { background: #ffc107 !important; color: #000; }
         #next-btn { display: none; margin-top: 15px; padding: 10px 40px; border-radius: 25px; border: none; background: #28a745; color: white; font-weight: bold; }
         @keyframes pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
@@ -33,124 +42,162 @@
         <div id="q-progress" style="font-size: 0.7rem; color: #6c757d;"></div>
         <div id="q-text" style="font-weight: bold; font-size: 0.9rem; padding: 0 10px;"></div>
     </header>
+
     <div id="main-stage">
-        <div id="drop-zone-wrap"><div id="drop-zone">ここにドロップ</div></div>
-        <div id="input-form">
-            <div class="input-group"><span>握力 (kg)</span><input type="number" id="grip" oninput="judgeGrip()"><div id="dot-grip" class="status-dot"></div></div>
-            <div class="input-group"><span>身長 (cm)</span><input type="number" id="height" oninput="calcBMI()"><div></div></div>
-            <div class="input-group"><span>体重 (kg)</span><input type="number" id="weight" oninput="calcBMI()"><div></div></div>
-            <div class="input-group"><span>BMI</span><span id="bmi-val">--</span><div id="dot-bmi" class="status-dot"></div></div>
+        <div id="drop-zone-wrap">
+            <div id="drop-zone">ここにドロップ</div>
         </div>
+
+        <div id="input-form">
+            <div class="input-group">
+                <span>握力 (kg)</span>
+                <input type="number" id="grip" placeholder="0.0" oninput="judgeGrip()">
+                <div id="dot-grip" class="status-dot"></div>
+            </div>
+            <div class="input-group">
+                <span>身長 (cm)</span>
+                <input type="number" id="height" placeholder="0.0" oninput="calcBMI()">
+                <div></div>
+            </div>
+            <div class="input-group">
+                <span>体重 (kg)</span>
+                <input type="number" id="weight" placeholder="0.0" oninput="calcBMI()">
+                <div></div>
+            </div>
+            <div class="input-group" style="border-top: 1px solid #eee; padding-top: 10px;">
+                <span>BMI</span>
+                <span id="bmi-val" style="font-weight: bold; font-size: 1.2rem;">--</span>
+                <div id="dot-bmi" class="status-dot"></div>
+            </div>
+        </div>
+
         <button id="next-btn" onclick="goNext()">次へ進む</button>
     </div>
+
     <div id="seals-container"></div>
 </div>
+
 <script>
     const questions = [
         { id: 12, text: "Q12. 地域活動に参加していますか？", opts: ["週1以上", "月1以上", "年数回", "以前は参加", "参加せず"], type: "neutral" },
         { id: 7, text: "Q7. 歩く速度が遅くなりましたか？", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
         { id: "calc", text: "身体計測（握力・BMI）", type: "calc" }
     ];
-    let currentIdx = 0;
-    let answers = {};
-    const nextBtn = document.getElementById('next-btn');
 
-    // ★重要★ ボタンが効かない呪いを解く一行（touchstartを強制検知）
-    nextBtn.addEventListener('touchstart', (e) => { e.preventDefault(); goNext(); });
+let currentIdx = 0;
+    // ★ 15問になっても自動でデータを溜めるバケツ
+    let allAnswers = {};
+
+    const questions = [
+        { id: "q1_community", title: "地域活動に参加していますか？", item: "🏠", color: "bg-blue" },
+        { id: "q2_walking", title: "最近、歩くのが遅くなった？", item: "🚶", color: "bg-green" },
+        { id: "q3_measurement", title: "握力とBMIを測定しよう", item: "⚖️", color: "bg-orange" }
+        // ★ 4問目以降はここに足していくだけでOK！
+    ];
 
     function load() {
         const q = questions[currentIdx];
-        document.getElementById('q-progress').innerText = `STEP ${currentIdx + 1} / 3`;
-        document.getElementById('q-text').innerText = q.text;
-        nextBtn.style.display = "none";
-        if (q.type === "calc") {
-            document.getElementById('drop-zone-wrap').style.display = "none";
-            document.getElementById('seals-container').style.display = "none";
-            document.getElementById('input-form').style.display = "block";
-            nextBtn.style.display = "block";
-        } else {
-            document.getElementById('drop-zone-wrap').style.display = "block";
-            document.getElementById('seals-container').style.display = "flex";
-            document.getElementById('input-form').style.display = "none";
-            renderSeals(q.opts);
-            document.getElementById('drop-zone').innerHTML = "ここにドロップ";
-        }
-    }
-
-    function renderSeals(opts) {
-        const cont = document.getElementById('seals-container');
-        cont.innerHTML = "";
-        const row1 = document.createElement('div'); row1.className = 'seal-row';
-        const row2 = document.createElement('div'); row2.className = 'seal-row';
-        opts.forEach((opt, i) => {
-            const s = document.createElement('div'); s.className = 'seal'; s.innerText = opt;
-            s.addEventListener('touchstart', onStart, {passive: false});
-            (i < 3) ? row1.appendChild(s) : row2.appendChild(s);
-        });
-        cont.appendChild(row1); if(opts.length > 3) cont.appendChild(row2);
-    }
-
-    let active = null;
-    function onStart(e) {
-        active = e.target.cloneNode(true);
-        document.body.appendChild(active);
-        active.style.position = 'fixed'; active.style.zIndex = '1000';
-        updatePos(e.touches[0]);
-        document.ontouchmove = (ev) => { ev.preventDefault(); updatePos(ev.touches[0]); };
-        document.ontouchend = (ev) => {
-            const t = ev.changedTouches[0];
-            const r = document.getElementById('drop-zone').getBoundingClientRect();
-            if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) {
-                const q = questions[currentIdx];
-                let c = "bg-yellow";
-                if(q.type==="logic") c = (q.red === active.innerText) ? "bg-red" : "bg-blue";
-                document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
-                answers[q.id] = active.innerText;
-                nextBtn.style.display = "block";
-            }
-            active.remove(); document.ontouchmove = null;
-        };
-    }
-
-    function updatePos(t) { 
-        active.style.left = (t.clientX - 34) + 'px'; 
-        active.style.top = (t.clientY - 34) + 'px'; 
-    }
-
-    function judgeGrip() {
-        const val = parseFloat(document.getElementById('grip').value);
-        const dot = document.getElementById('dot-grip');
-        dot.className = "status-dot " + (isNaN(val) ? "" : (val < 28 ? "bg-red" : "bg-blue"));
-    }
-
-    function calcBMI() {
-        const h = parseFloat(document.getElementById('height').value) / 100;
-        const w = parseFloat(document.getElementById('weight').value);
-        if (h > 0 && w > 0) {
-            const bmi = (w / (h * h)).toFixed(1);
-            document.getElementById('bmi-val').innerText = bmi;
-            document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
-        }
+        document.getElementById('q-title').innerText = q.title;
+        document.getElementById('step-info').innerText = `Step ${currentIdx + 1} / ${questions.length}`;
+        
+        const stage = document.getElementById('main-stage');
+        stage.innerHTML = `
+            <div id="drop-zone">ココに運んで</div>
+            <div id="item-box">
+                <div class="active-item ${q.color}" id="active-item" 
+                     ontouchstart="onStart(event)" onmousedown="onStart(event)">${q.item}</div>
+            </div>
+            ${q.id === 'q3_measurement' ? `
+                <div id="input-grip" class="input-card">
+                    <div class="status-dot" id="dot-grip"></div>
+                    握力(kg): <input type="number" id="grip" step="0.1" oninput="judgeGrip()">
+                </div>
+                <div id="input-bmi" class="input-card">
+                    <div class="status-dot" id="dot-bmi"></div>
+                    身長(cm): <input type="number" id="height" step="0.1" oninput="calcBMI()"><br>
+                    体重(kg): <input type="number" id="weight" step="0.1" oninput="calcBMI()">
+                    <div style="margin-top:5px; font-weight:bold;">BMI: <span id="bmi-val">--</span></div>
+                </div>
+            ` : ''}
+            <button id="next-btn" onclick="goNext()">次へ進む</button>
+        `;
     }
 
     function goNext() {
-        if (currentIdx < questions.length - 1) {
-            currentIdx++; load();
+        const currentQ = questions[currentIdx];
+        
+        // ★ 自動データ回収ロジック
+        // 画面にあるinput（握力、身長、体重）を全部拾う
+        const inputs = document.querySelectorAll('#main-stage input');
+        inputs.forEach(input => {
+            allAnswers[input.id] = input.value;
+        });
+
+        // BMIの数値を拾う
+        const bmiVal = document.getElementById('bmi-val');
+        if (bmiVal) allAnswers['bmi'] = bmiVal.innerText;
+
+        // ドロップされたかどうかの判定（q1, q2などの質問IDで保存）
+        const isDropped = document.getElementById('drop-zone').querySelector('.active-item');
+        allAnswers[currentQ.id] = isDropped ? "はい" : "いいえ";
+
+        currentIdx++;
+
+        if (currentIdx < questions.length) {
+            load();
         } else {
-            const results = {
-                done: true,
-                q_answers: answers,
-                grip: document.getElementById('grip').value,
-                bmi: document.getElementById('bmi-val').innerText
-            };
-            window.parent.postMessage({
-                isStreamlitMessage: true,
-                type: "streamlit:setComponentValue",
-                value: results
-            }, "*");
+            // ★ 最終送信：全データをパラメータ化
+            const url = new URL(window.location.href);
+            Object.keys(allAnswers).forEach(key => {
+                url.searchParams.set(key, allAnswers[key]);
+            });
+            alert("全ての回答を送信します。");
+            window.location.href = url.href; 
         }
     }
-    load();
-</script>
-</body>
-</html>
+
+    // --- ユーティリティ関数（ドラッグ＆計算） ---
+    let active, isDragging = false;
+    function onStart(e) {
+        isDragging = true;
+        active = e.target;
+        const t = e.touches ? e.touches[0] : e;
+        updatePos(t);
+        document.onmousemove = document.ontouchmove = (ev) => {
+            if(!isDragging) return;
+            const tt = ev.touches ? ev.touches[0] : ev;
+            updatePos(tt);
+        };
+        document.onmouseup = document.ontouchend = () => {
+            isDragging = false;
+            const dz = document.getElementById('drop-zone').getBoundingClientRect();
+            const it = active.getBoundingClientRect();
+            if (it.left > dz.left && it.right < dz.right && it.top > dz.top && it.bottom < dz.bottom) {
+                document.getElementById('drop-zone').appendChild(active);
+                active.style.position = "static";
+                document.getElementById('next-btn').style.display = "block";
+            }
+        };
+    }
+    function updatePos(t) { 
+        active.style.position = "absolute";
+        active.style.left = (t.clientX - 34) + 'px'; 
+        active.style.top = (t.clientY - 34) + 'px'; 
+    }
+    function judgeGrip() {
+        const val = parseFloat(document.getElementById('grip').value);
+        const dot = document.getElementById('dot-grip');
+        if (isNaN(val)) dot.className = "status-dot";
+        else dot.className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
+    }
+    function calcBMI() {
+        const h = parseFloat(document.getElementById('height').value) / 100;
+        const w = parseFloat(document.getElementById('weight').value);
+        const bmiVal = document.getElementById('bmi-val');
+        const dot = document.getElementById('dot-bmi');
+        if (h > 0 && w > 0) {
+            const bmi = (w / (h * h)).toFixed(1);
+            bmiVal.innerText = bmi;
+            dot.className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
+        }
+    }
