@@ -6,13 +6,30 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
 
-# --- 設定 ---
+# ===============================
+# 設定
+# ===============================
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
 st.set_page_config(page_title="フレイル予防システム", layout="centered")
 
+# ===============================
+# ① 完了データを最優先で回収
+# （認証より先にやるのが重要）
+# ===============================
+if st.query_params.get("done") == "1":
+    try:
+        data = json.loads(st.query_params.get("data"))
+        st.session_state["_pending_data"] = data
+        st.query_params.pop("done", None)
+        st.query_params.pop("data", None)
+    except Exception as e:
+        st.error(f"データ解析エラー: {e}")
 
+# ===============================
+# Google 認証
+# ===============================
 def authenticate_google():
     if 'credentials' not in st.session_state:
         client_config = {
@@ -50,10 +67,11 @@ def authenticate_google():
 
     return st.session_state.credentials
 
-
+# ===============================
+# Drive 保存
+# ===============================
 def save_data_to_drive(data):
-    creds = st.session_state.credentials
-    service = build('drive', 'v3', credentials=creds)
+    service = build('drive', 'v3', credentials=st.session_state.credentials)
 
     filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     file_metadata = {
@@ -71,14 +89,20 @@ def save_data_to_drive(data):
         media_body=media
     ).execute()
 
-
 # ===============================
 # メイン処理
 # ===============================
 creds = authenticate_google()
 
 if creds:
+    # 初期画面は必ずマイページ
     if "view" not in st.session_state:
+        st.session_state.view = "mypage"
+
+    # ★ 未保存データがあればここで保存
+    if "_pending_data" in st.session_state:
+        save_data_to_drive(st.session_state["_pending_data"])
+        del st.session_state["_pending_data"]
         st.session_state.view = "mypage"
 
     # --- マイページ ---
@@ -119,22 +143,5 @@ if creds:
 
             components.html(html_content, height=1200)
 
-            if st.query_params.get("done") == "1":
-                data = json.loads(st.query_params.get("data"))
-                save_data_to_drive(data)
-                st.query_params.clear()
-                st.session_state.view = "result"
-                st.rerun()
-
         except Exception as e:
             st.error(f"システムエラー: {e}")
-
-    # --- 保存完了画面 ---
-    elif st.session_state.view == "result":
-        st.balloons()
-        st.title("✅ 保存完了")
-        st.success("測定データをGoogle Driveに保存しました。")
-
-        if st.button("マイページへ戻る"):
-            st.session_state.view = "mypage"
-            st.rerun()
