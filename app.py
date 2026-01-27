@@ -1,4 +1,5 @@
 import json
+import os
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
@@ -16,6 +17,8 @@ CLIENT_CONFIG = {
         "client_secret": "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",
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
+        # ★ここを Render の URL + /callback に固定する！
+        "redirect_uris": ["https://frail-system.onrender.com/callback"]
     }
 }
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
@@ -28,15 +31,16 @@ def index():
 
 @app.route('/login')
 def login():
+    # ★ここも確実に Render の URL を使うように指定
     flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
-    flow.redirect_uri = url_for('callback', _external=True)
+    flow.redirect_uri = "https://frail-system.onrender.com/callback"
     auth_url, _ = flow.authorization_url(prompt='consent')
     return redirect(auth_url)
 
 @app.route('/callback')
 def callback():
     flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
-    flow.redirect_uri = url_for('callback', _external=True)
+    flow.redirect_uri = "https://frail-system.onrender.com/callback"
     flow.fetch_token(code=request.args.get('code'))
     creds = flow.credentials
     session['credentials'] = {
@@ -65,4 +69,6 @@ def save():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Renderでは環境変数 PORT が使われるため
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
