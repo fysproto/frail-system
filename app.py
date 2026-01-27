@@ -8,7 +8,6 @@ from datetime import datetime
 
 # --- 設定 ---
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
-# 本番環境のURL
 REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
 st.set_page_config(page_title="フレイル予防システム", layout="centered")
@@ -26,11 +25,14 @@ def authenticate_google():
                 "redirect_uris": [REDIRECT_URI]
             }
         }
+        # 最新版の判定方法
         if "code" in st.query_params:
             flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
             flow.fetch_token(code=st.query_params["code"])
             st.session_state.credentials = flow.credentials
-            st.query_params.clear()
+            # パラメータ削除
+            for key in list(st.query_params.keys()):
+                del st.query_params[key]
             st.rerun()
         else:
             flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
@@ -44,7 +46,7 @@ def save_data_to_drive(data):
     creds = st.session_state.credentials
     service = build('drive', 'v3', credentials=creds)
     
-    # CSV形式に整形（最小限の1行データ）
+    # CSV形式に整形
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     header = "timestamp," + ",".join(data.keys()) + "\n"
     values = f"{timestamp}," + ",".join([str(v) for v in data.values()]) + "\n"
@@ -59,19 +61,42 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
-    # URLパラメータの監視（ここがバイパスの出口）
-    params = st.query_params.to_dict()
-    
-    if params.get("done") == "1":
-        try:
-            raw_data = params.get("data")
-            if raw_data:
+    # ★ 核心：URLパラメータからのデータ復元
+    # .get() を直接使うのが最新の安全な書き方
+    if st.query_params.get("done") == "1":
+        raw_data = st.query_params.get("data")
+        if raw_data:
+            try:
                 save_data_to_drive(json.loads(raw_data))
-                st.query_params.clear() # パラメータを掃除してリロード
+                # クエリパラメータを全削除してリセット
+                for key in list(st.query_params.keys()):
+                    del st.query_params[key]
                 st.session_state.view = "result"
                 st.rerun()
-        except Exception as e:
-            st.error(f"データ保存エラー: {e}")
+            except Exception as e:
+                st.error(f"保存失敗: {e}")
 
     if "view" not in st.session_state:
-        st.session_state.view
+        st.session_state.view = "mypage"
+
+    if st.session_state.view == "mypage":
+        st.title("🏠 マイページ")
+        if st.button("📏 測定を開始する", use_container_width=True):
+            st.session_state.view = "measure"
+            st.rerun()
+
+    elif st.session_state.view == "measure":
+        st.markdown("<style>[data-testid='stHeader'],header,footer{display:none;}.main .block-container{padding:0;}</style>", unsafe_allow_html=True)
+        try:
+            with open("index.html", "r", encoding="utf-8") as f:
+                html_content = f.read()
+            components.html(html_content, height=1200)
+        except Exception as e:
+            st.error(f"HTML読み込みエラー: {e}")
+
+    elif st.session_state.view == "result":
+        st.balloons()
+        st.title("✅ 保存完了")
+        if st.button("マイページへ戻る"):
+            st.session_state.view = "mypage"
+            st.rerun()

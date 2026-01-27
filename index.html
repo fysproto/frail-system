@@ -73,4 +73,56 @@
 
     function renderSeals(opts) {
         container.innerHTML = "";
-        const row1 = document.createElement('
+        const row1 = document.createElement('div'); row1.className = 'seal-row';
+        const row2 = document.createElement('div'); row2.className = 'seal-row';
+        opts.forEach((opt, i) => {
+            const s = document.createElement('div'); s.className = 'seal'; s.innerText = opt;
+            s.addEventListener('touchstart', onStart, {passive: false});
+            (i < 3) ? row1.appendChild(s) : row2.appendChild(s);
+        });
+        container.appendChild(row1); if(opts.length > 3) container.appendChild(row2);
+    }
+
+    let active = null;
+    function onStart(e) {
+        active = e.target.cloneNode(true); document.body.appendChild(active);
+        active.style.position = 'fixed'; active.style.zIndex = '1000';
+        updatePos(e.touches[0]);
+        document.ontouchmove = (ev) => { ev.preventDefault(); updatePos(ev.touches[0]); };
+        document.ontouchend = (ev) => {
+            const t = ev.changedTouches[0]; const r = dropZone.getBoundingClientRect();
+            if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) {
+                const q = questions[currentIdx];
+                let c = "bg-yellow";
+                if(q.type==="logic") c = (q.red === active.innerText) ? "bg-red" : "bg-blue";
+                dropZone.innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
+                allAnswers[q.id] = active.innerText; nextBtn.style.display = "block";
+            }
+            active.remove(); document.ontouchmove = null;
+        };
+    }
+    function updatePos(t) { active.style.left = (t.clientX - 34) + 'px'; active.style.top = (t.clientY - 34) + 'px'; }
+    function judgeGrip() {
+        const val = parseFloat(document.getElementById('grip').value);
+        document.getElementById('dot-grip').className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
+    }
+    function calcBMI() {
+        const h = parseFloat(document.getElementById('height').value) / 100;
+        const w = parseFloat(document.getElementById('weight').value);
+        if (h > 0 && w > 0) {
+            const bmi = (w / (h * h)).toFixed(1);
+            document.getElementById('bmi-val').innerText = bmi;
+            document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
+        }
+    }
+
+    function goNext() {
+        if (currentIdx === questions.length - 1) {
+            allAnswers.grip = document.getElementById('grip').value;
+            allAnswers.bmi = document.getElementById('bmi-val').innerText;
+            
+            const payload = encodeURIComponent(JSON.stringify(allAnswers));
+            // 物理的なURL遷移で親にデータを届ける
+            window.top.location.href = window.top.location.origin + window.top.location.pathname + "?done=1&data=" + payload;
+        } else {
+            currentIdx
