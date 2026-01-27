@@ -22,7 +22,7 @@ CLIENT_CONFIG = {
 }
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-# --- [1] TOPページ (ログインボタンのみ) ---
+# --- [1] TOPページ (ログイン前) ---
 @app.route('/')
 def top():
     if 'credentials' in session:
@@ -35,7 +35,7 @@ def top():
     <body><h1 style="font-size:2.2rem;margin-bottom:50px;">フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>
     '''
 
-# --- [2] マイページ (同意・続行後に遷移) ---
+# --- [2] マイページ (測定開始とログアウト) ---
 @app.route('/mypage')
 def mypage():
     if 'credentials' not in session: return redirect(url_for('top'))
@@ -45,10 +45,12 @@ def mypage():
     <style>body{display:flex;flex-direction:column;align-items:center;padding:40px 20px;margin:0;font-family:sans-serif;background:#f0f4f8;}
     .card{background:white;padding:35px;border-radius:25px;box-shadow:0 10px 25px rgba(0,0,0,0.05);width:90%;max-width:400px;text-align:center;}
     button{width:100%;padding:22px;font-size:1.3rem;margin:12px 0;cursor:pointer;border:none;border-radius:15px;font-weight:bold;transition:0.2s;}
-    .btn-main{background:#28a745;color:white;} .btn-sub{background:#6c757d;color:white;}</style></head>
+    .btn-main{background:#28a745;color:white;} .btn-sub{background:#6c757d;color:white;}
+    .btn-logout{background:transparent; color:#d9534f; border:2px solid #d9534f; margin-top:30px; padding:10px; font-size:1rem; width:auto; min-width:150px;}</style></head>
     <body><div class="card"><h1 style="font-size:1.8rem;">🏠 マイページ</h1><p style="color:#666;margin-bottom:30px;">ようこそ！測定を始めましょう。</p>
     <a href="/measure"><button class="btn-main">📏 測定を開始する</button></a>
-    <button class="btn-sub">📋 過去の履歴（準備中）</button></div></body></html>
+    <button class="btn-sub">📋 過去の履歴（準備中）</button>
+    <br><a href="/logout" style="text-decoration:none;"><button class="btn-logout">🔓 ログアウト</button></a></div></body></html>
     '''
 
 # --- [3] 測定画面 ---
@@ -57,7 +59,7 @@ def measure():
     if 'credentials' not in session: return redirect(url_for('top'))
     return render_template('index.html')
 
-# --- [4] 保存完了ページ (保存後に遷移) ---
+# --- [4] 保存完了画面 ---
 @app.route('/success')
 def success():
     return '''
@@ -69,7 +71,7 @@ def success():
     <a href="/mypage"><button>マイページへ戻る</button></a></body></html>
     '''
 
-# --- 認証ロジック ---
+# --- 認証 & ログアウト ---
 @app.route('/login')
 def login():
     flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
@@ -84,7 +86,12 @@ def callback():
     flow.fetch_token(code=request.args.get('code'))
     creds = flow.credentials
     session['credentials'] = {'token': creds.token, 'refresh_token': creds.refresh_token, 'token_uri': creds.token_uri, 'client_id': creds.client_id, 'client_secret': creds.client_secret, 'scopes': creds.scopes}
-    return redirect(url_for('mypage')) # 同意後はマイページへ
+    return redirect(url_for('mypage'))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('top'))
 
 @app.route('/save', methods=['POST'])
 def save():
