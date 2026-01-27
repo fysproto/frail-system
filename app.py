@@ -50,32 +50,38 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
-    # URLパラメータに回答（q12など）が入っているかチェック
-    params = st.query_params
-    
-    # CSS：あなたの指定したレイアウトを維持
-    st.markdown("""
-        <style>
-            [data-testid="stHeader"], header, footer { display: none !important; }
-            .main .block-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
-            html, body, [data-testid="stAppViewContainer"] { overflow: hidden !important; position: fixed; width: 100%; height: 100%; }
-            iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; z-index: 99999; }
-        </style>
-    """, unsafe_allow_html=True)
+    # 1. URLパラメータをチェック（ここが重要！）
+    # query_paramsにデータが入っていれば、それは「測定終了」のサイン
+    ans = st.query_params.to_dict()
 
-    # もしURLにデータが届いていたら（回答完了後のリロード時）
-    if params and "q12" in params:
-        save_data_to_drive(dict(params))
+    # 2. もしデータ（例えばq12）が届いていたら保存処理へ
+    if "q12" in ans:
+        # 保存実行
+        save_data_to_drive(ans)
+        
+        # 画面表示
         st.balloons()
-        st.success("データをGoogle Driveに保存しました。")
-        if st.button("戻る"):
+        st.success("Google Driveにデータを保存しました。")
+        if st.button("最初からやり直す"):
+            # URLをクリアしてリロード
             st.query_params.clear()
             st.rerun()
+    
+    # 3. データがまだ届いていないなら測定画面を表示
     else:
-        # データがない場合は測定画面（HTML）を表示
+        st.markdown("""
+            <style>
+                [data-testid="stHeader"], header, footer { display: none !important; }
+                .main .block-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+                html, body, [data-testid="stAppViewContainer"] { overflow: hidden !important; position: fixed; width: 100%; height: 100%; }
+                iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; z-index: 99999; }
+            </style>
+        """, unsafe_allow_html=True)
+
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
+            # ここでは res = ... は使わず、垂れ流すだけでOK
             components.html(html_content, height=1200)
         except Exception as e:
             st.error(f"システムエラー: {e}")
