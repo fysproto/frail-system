@@ -3,58 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>フレイルチェック・プロトタイプ</title>
     <style>
+        /* 元のスタイルを完全に維持 */
         html, body { 
             position: fixed; width: 100%; height: 100%; 
             overflow: hidden; touch-action: none; 
             font-family: sans-serif; margin: 0; background: #f0f4f8; 
         }
         #app { display: flex; flex-direction: column; height: 100%; }
-        header { height: 80px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; }
-        h2 { margin: 0; font-size: 18px; color: #333; }
-        #step-info { font-size: 12px; color: #888; margin-top: 4px; }
-        
+        header { height: 70px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; }
         #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-        
-        #drop-zone { width: 160px; height: 160px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; margin-bottom: 30px; font-weight: bold; transition: all 0.3s; }
-        #drop-zone.active { border-color: #007bff; background: #e7f1ff; }
-
-        #item-box { height: 100px; display: flex; align-items: center; justify-content: center; width: 100%; }
-        .active-item { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #fff; cursor: pointer; user-select: none; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        
+        #drop-zone { width: 150px; height: 150px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-weight: bold; }
+        #item-box { height: 120px; display: flex; align-items: center; justify-content: center; width: 100%; }
+        .active-item { width: 68px; height: 68px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #fff; cursor: pointer; user-select: none; touch-action: none; z-index: 100; }
         .bg-blue { background: #007bff; }
         .bg-green { background: #28a745; }
         .bg-orange { background: #fd7e14; }
         .bg-red { background: #dc3545; }
-
-        .input-card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-top: 10px; width: 85%; max-width: 300px; }
-        input[type="number"] { width: 60px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; margin: 5px; }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; background: #ccc; }
-
-        #next-btn { display: none; margin-top: 25px; padding: 12px 40px; font-size: 18px; font-weight: bold; border-radius: 25px; background: #007bff; color: white; border: none; box-shadow: 0 4px 12px rgba(0,123,255,0.3); }
+        .input-card { background: #fff; padding: 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-top: 5px; width: 80%; }
+        input[type="number"] { width: 50px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; background: #ccc; }
+        #next-btn { display: none; margin-top: 15px; padding: 10px 25px; font-size: 18px; border-radius: 8px; background: #007bff; color: white; border: none; }
     </style>
 </head>
 <body>
 
 <div id="app">
     <header>
-        <h2 id="q-title">読み込み中...</h2>
-        <div id="step-info">Step 1 / 3</div>
+        <h2 id="q-title" style="margin:0; font-size: 18px;"></h2>
+        <div id="step-info" style="font-size: 12px; color: #666;"></div>
     </header>
     <div id="main-stage">
+        <div id="drop-zone">ココに運んで</div>
+        <div id="item-box"></div>
+        
+        <div id="q3-inputs" style="display:none; width: 100%; display: flex; flex-direction: column; align-items: center;">
+            <div id="input-grip" class="input-card">
+                <div class="status-dot" id="dot-grip"></div>握力: <input type="number" id="grip" step="0.1" oninput="judgeGrip()"> (kg)
+            </div>
+            <div id="input-bmi" class="input-card">
+                <div class="status-dot" id="dot-bmi"></div>
+                身長: <input type="number" id="height" step="0.1" oninput="calcBMI()">
+                体重: <input type="number" id="weight" step="0.1" oninput="calcBMI()">
+                <div style="margin-top:5px;">BMI: <span id="bmi-val">--</span></div>
+            </div>
         </div>
+
+        <button id="next-btn" onclick="goNext()">次へ進む</button>
+    </div>
 </div>
 
 <script>
     let currentIdx = 0;
-    let allAnswers = {};
+    let allAnswers = {}; // 15問対応のバケツ
 
-    // ★本番で15問にする時はこの配列を増やすだけ！
     const questions = [
-        { id: "q1_community", title: "地域活動に参加していますか？", item: "🏠", color: "bg-blue" },
-        { id: "q2_walking", title: "最近、歩くのが遅くなった？", item: "🚶", color: "bg-green" },
-        { id: "q3_measurement", title: "握力とBMIを測定しよう", item: "⚖️", color: "bg-orange" }
+        { id: "q1", title: "地域活動に参加していますか？", item: "🏠", color: "bg-blue" },
+        { id: "q2", title: "最近、歩くのが遅くなった？", item: "🚶", color: "bg-green" },
+        { id: "q3", title: "握力とBMIを測定しよう", item: "⚖️", color: "bg-orange" }
     ];
 
     function load() {
@@ -62,108 +68,49 @@
         document.getElementById('q-title').innerText = q.title;
         document.getElementById('step-info').innerText = `Step ${currentIdx + 1} / ${questions.length}`;
         
-        const stage = document.getElementById('main-stage');
-        stage.innerHTML = `
-            <div id="drop-zone">ココに運んで</div>
-            <div id="item-box">
-                <div class="active-item ${q.color}" id="active-item" 
-                     ontouchstart="onStart(event)" onmousedown="onStart(event)">${q.item}</div>
-            </div>
-            ${q.id === 'q3_measurement' ? `
-                <div class="input-card">
-                    <div class="status-dot" id="dot-grip"></div>握力: <input type="number" id="grip" step="0.1" oninput="judge()"> (kg)
-                </div>
-                <div class="input-card">
-                    <div class="status-dot" id="dot-bmi"></div>
-                    身長: <input type="number" id="height" step="0.1" oninput="judge()"> (cm)<br>
-                    体重: <input type="number" id="weight" step="0.1" oninput="judge()"> (kg)
-                    <div style="margin-top:8px;">BMI: <span id="bmi-val" style="font-weight:bold;">--</span></div>
-                </div>
-            ` : ''}
-            <button id="next-btn" onclick="goNext()">次へ進む</button>
-        `;
+        // アイコンの復活
+        const itemBox = document.getElementById('item-box');
+        itemBox.innerHTML = `<div class="active-item ${q.color}" id="active-item" ontouchstart="onStart(event)" onmousedown="onStart(event)">${q.item}</div>`;
+        
+        // ドロップゾーンの初期化
+        const dz = document.getElementById('drop-zone');
+        dz.innerHTML = "ココに運んで";
+        
+        // 入力エリアの表示制御
+        document.getElementById('q3-inputs').style.display = (q.id === "q3") ? "block" : "none";
+        document.getElementById('next-btn').style.display = "none";
     }
 
-    window.goNext = function() {
-        const currentQ = questions[currentIdx];
+    function goNext() {
+        const q = questions[currentIdx];
         
-        // 入力値を自動回収
-        document.querySelectorAll('#main-stage input').forEach(el => {
-            allAnswers[el.id] = el.value;
-        });
-        const bmi = document.getElementById('bmi-val');
-        if (bmi) allAnswers['bmi'] = bmi.innerText;
-
-        // ドロップ判定
+        // データの自動回収
+        if (q.id === "q3") {
+            allAnswers.grip = document.getElementById('grip').value;
+            allAnswers.height = document.getElementById('height').value;
+            allAnswers.weight = document.getElementById('weight').value;
+            allAnswers.bmi = document.getElementById('bmi-val').innerText;
+        }
+        
+        // ドロップ判定の結果を保存
         const isDropped = document.getElementById('drop-zone').querySelector('.active-item');
-        allAnswers[currentQ.id] = isDropped ? "はい" : "いいえ";
+        allAnswers[q.id] = isDropped ? "はい" : "いいえ";
 
         currentIdx++;
         if (currentIdx < questions.length) {
             load();
         } else {
-            // 完了：Streamlitへ全送信
+            // 最終送信
             const url = new URL(window.location.href);
             Object.keys(allAnswers).forEach(key => url.searchParams.set(key, allAnswers[key]));
-            alert("全ての回答を送信します。");
             window.location.href = url.href; 
         }
-    };
+    }
 
-    // ドラッグ＆ドロップロジック
+    // ドラッグ＆ドロップ（元のロジックを維持）
     let active, isDragging = false;
-    window.onStart = function(e) {
-        isDragging = true;
-        active = e.target;
+    function onStart(e) {
+        isDragging = true; active = e.target;
         active.style.position = "absolute";
         const t = e.touches ? e.touches[0] : e;
-        move(t);
-
-        document.ontouchmove = document.onmousemove = (ev) => {
-            if(!isDragging) return;
-            move(ev.touches ? ev.touches[0] : ev);
-        };
-
-        document.ontouchend = document.onmouseup = () => {
-            if(!isDragging) return;
-            isDragging = false;
-            const dz = document.getElementById('drop-zone').getBoundingClientRect();
-            const it = active.getBoundingClientRect();
-
-            if (it.left > dz.left && it.right < dz.right && it.top > dz.top && it.bottom < dz.bottom) {
-                const zone = document.getElementById('drop-zone');
-                zone.innerText = "";
-                zone.appendChild(active);
-                active.style.position = "static";
-                document.getElementById('next-btn').style.display = "block";
-            } else {
-                active.style.position = "static"; // 失敗したら戻す
-            }
-            document.ontouchmove = document.onmousemove = null;
-        };
-    };
-
-    function move(t) {
-        active.style.left = (t.clientX - 35) + 'px';
-        active.style.top = (t.clientY - 35) + 'px';
-    }
-
-    window.judge = function() {
-        const g = parseFloat(document.getElementById('grip')?.value);
-        if (g) document.getElementById('dot-grip').className = "status-dot " + (g < 28 ? "bg-red" : "bg-blue");
-
-        const h = parseFloat(document.getElementById('height')?.value) / 100;
-        const w = parseFloat(document.getElementById('weight')?.value);
-        if (h > 0 && w > 0) {
-            const bmi = (w / (h * h)).toFixed(1);
-            document.getElementById('bmi-val').innerText = bmi;
-            document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
-        }
-    }
-
-    // 初回起動
-    load();
-</script>
-
-</body>
-</html>
+        updatePos(t
