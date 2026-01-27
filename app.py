@@ -97,11 +97,13 @@ if creds:
         """, unsafe_allow_html=True)
         
         try:
+            import streamlit.components.v1 as components
+            
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
             
-            # st.htmlで表示（iframeなし）
-            st.html(html_content)
+            # components.htmlで表示
+            components.html(html_content, height=800, scrolling=True)
             
         except FileNotFoundError:
             st.error("index.htmlが見つかりません")
@@ -110,6 +112,8 @@ if creds:
                 st.rerun()
         except Exception as e:
             st.error(f"エラー: {e}")
+            import traceback
+            st.code(traceback.format_exc())
             if st.button("マイページへ戻る"):
                 st.session_state.view = "mypage"
                 st.rerun()
