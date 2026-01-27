@@ -1,107 +1,68 @@
-import streamlit as st
-import streamlit.components.v1 as components
 import json
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from google_auth_oauthlib.flow import Flow
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
 
+app = Flask(__name__)
+app.secret_key = "frail_app_key"
+
 # --- 設定 ---
+CLIENT_CONFIG = {
+    "web": {
+        "client_id": "734131799600-cn8qec6q6dqh24v93bf4ubabb0gtjm5d.apps.googleusercontent.com",
+        "client_secret": "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",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+    }
+}
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
-REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
-st.set_page_config(page_title="フレイル予防システム", layout="centered")
+@app.route('/')
+def index():
+    if 'credentials' not in session:
+        return '<div style="text-align:center;margin-top:100px;"><h1>フレイル測定</h1><a href="/login"><button style="padding:20px;font-size:20px;cursor:pointer;">Googleでログイン</button></a></div>'
+    return render_template('index.html')
 
-def authenticate_google():
-    if 'credentials' not in st.session_state:
-        client_config = {
-            "web": {
-                "client_id": st.secrets["google_client_id"],
-                "project_id": "frail-app-project",
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "client_secret": st.secrets["google_client_secret"],
-                "redirect_uris": [REDIRECT_URI]
-            }
-        }
-        if "code" in st.query_params:
-            flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
-            flow.fetch_token(code=st.query_params["code"])
-            st.session_state.credentials = flow.credentials
-            st.query_params.clear()
-            st.rerun()
-        else:
-            flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
-            auth_url, _ = flow.authorization_url(prompt='consent')
-            st.title("フレイル測定アプリ")
-            st.link_button("Googleアカウントでログイン", auth_url)
-            return None
-    return st.session_state.credentials
+@app.route('/login')
+def login():
+    flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
+    flow.redirect_uri = url_for('callback', _external=True)
+    auth_url, _ = flow.authorization_url(prompt='consent')
+    return redirect(auth_url)
 
-def save_data_to_drive(data):
-    creds = st.session_state.credentials
-    service = build('drive', 'v3', credentials=creds)
-    filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    media = MediaInMemoryUpload(json.dumps(data, ensure_ascii=False).encode('utf-8'), mimetype='application/json')
-    service.files().create(body={'name': filename}, media_body=media).execute()
+@app.route('/callback')
+def callback():
+    flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
+    flow.redirect_uri = url_for('callback', _external=True)
+    flow.fetch_token(code=request.args.get('code'))
+    creds = flow.credentials
+    session['credentials'] = {
+        'token': creds.token, 'refresh_token': creds.refresh_token,
+        'token_uri': creds.token_uri, 'client_id': creds.client_id,
+        'client_secret': creds.client_secret, 'scopes': creds.scopes
+    }
+    return redirect(url_for('index'))
 
-creds = authenticate_google()
-
-if creds:
-    # クエリパラメータでデータ受信をチェック
-    if "data" in st.query_params:
-        try:
-            data_str = st.query_params["data"]
-            data = json.loads(data_str)
-            save_data_to_drive(data)
-            st.session_state.view = "result"
-            st.session_state.saved_data = data
-            st.query_params.clear()
-            st.rerun()
-        except:
-            pass
-    
-    if "view" not in st.session_state:
-        st.session_state.view = "mypage"
-
-    # --- マイページ ---
-    if st.session_state.view == "mypage":
-        st.title("🏠 マイページ")
-        st.write("健康状態をチェックしましょう。")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📏 測定を開始する", use_container_width=True):
-                st.session_state.view = "measure"
-                st.rerun()
-        with col2:
-            st.button("📋 過去の履歴（準備中）", use_container_width=True)
-
-    # --- 測定画面 ---
-    elif st.session_state.view == "measure":
-        st.markdown("""
-            <style>
-                [data-testid="stHeader"], header, footer { display: none !important; }
-                .main .block-container { padding: 0 !important; margin: 0 !important; }
-                iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; z-index: 9999; }
-            </style>
-        """, unsafe_allow_html=True)
+@app.route('/save', methods=['POST'])
+def save():
+    if 'credentials' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    try:
+        data = request.json
+        creds = Credentials(**session['credentials'])
+        service = build('drive', 'v3', credentials=creds)
         
-        try:
-            with open("index.html", "r", encoding="utf-8") as f:
-                html_content = f.read()
-            
-            # HTMLコンポーネントを表示
-            components.html(html_content, height=1200)
-            
-        except Exception as e:
-            st.error(f"システムエラー: {e}")
+        filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        csv_body = "item,value\n" + "\n".join([f"{k},{v}" for k, v in data.items() if k != 'is_done'])
+        media = MediaInMemoryUpload(csv_body.encode('utf-8-sig'), mimetype='text/csv')
+        
+        service.files().create(body={'name': filename}, media_body=media).execute()
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-    # --- 保存完了画面 ---
-    elif st.session_state.view == "result":
-        st.balloons()
-        st.title("✅ 保存完了")
-        st.success("測定データをGoogle Driveに保存しました。")
-        if st.button("マイページへ戻る"):
-            st.session_state.view = "mypage"
-            st.rerun()
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)

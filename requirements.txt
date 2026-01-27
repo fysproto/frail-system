@@ -1,5 +1,4 @@
-streamlit
-google-api-python-client
+Flask
 google-auth-oauthlib
-qrcode
-pillow
+google-api-python-client
+gunicorn
