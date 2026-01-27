@@ -22,50 +22,54 @@ CLIENT_CONFIG = {
 }
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-# --- ルート：マイページ ---
+# --- [1] TOPページ (ログインボタンのみ) ---
 @app.route('/')
-def index():
-    if 'credentials' not in session:
-        # ログイン前：大きなボタンのトップページ
-        return '''
-        <html>
-        <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;}
-        button{padding:20px 40px;font-size:1.5rem;cursor:pointer;background:#007bff;color:white;border:none;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,0.1);}</style></head>
-        <body><h1>フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>
-        '''
-    
-    # ログイン後：マイページ
+def top():
+    if 'credentials' in session:
+        return redirect(url_for('mypage'))
+    return '''
+    <html>
+    <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;}
+    button{padding:25px 50px;font-size:1.6rem;cursor:pointer;background:#007bff;color:white;border:none;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);font-weight:bold;}</style></head>
+    <body><h1 style="font-size:2.2rem;margin-bottom:50px;">フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>
+    '''
+
+# --- [2] マイページ (同意・続行後に遷移) ---
+@app.route('/mypage')
+def mypage():
+    if 'credentials' not in session: return redirect(url_for('top'))
     return '''
     <html>
     <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>body{display:flex;flex-direction:column;align-items:center;padding:40px 20px;margin:0;font-family:sans-serif;background:#f0f4f8;}
-    .card{background:white;padding:30px;border-radius:20px;box-shadow:0 4px 15px rgba(0,0,0,0.05);width:100%;max-width:400px;text-align:center;}
-    button{width:100%;padding:18px;font-size:1.1rem;margin:10px 0;cursor:pointer;border:none;border-radius:12px;font-weight:bold;transition:0.2s;}
+    .card{background:white;padding:35px;border-radius:25px;box-shadow:0 10px 25px rgba(0,0,0,0.05);width:90%;max-width:400px;text-align:center;}
+    button{width:100%;padding:22px;font-size:1.3rem;margin:12px 0;cursor:pointer;border:none;border-radius:15px;font-weight:bold;transition:0.2s;}
     .btn-main{background:#28a745;color:white;} .btn-sub{background:#6c757d;color:white;}</style></head>
-    <body><div class="card"><h1>🏠 マイページ</h1><p>健康状態をチェックしましょう。</p>
+    <body><div class="card"><h1 style="font-size:1.8rem;">🏠 マイページ</h1><p style="color:#666;margin-bottom:30px;">ようこそ！測定を始めましょう。</p>
     <a href="/measure"><button class="btn-main">📏 測定を開始する</button></a>
     <button class="btn-sub">📋 過去の履歴（準備中）</button></div></body></html>
     '''
 
-# --- 測定画面 ---
+# --- [3] 測定画面 ---
 @app.route('/measure')
 def measure():
-    if 'credentials' not in session: return redirect(url_for('index'))
+    if 'credentials' not in session: return redirect(url_for('top'))
     return render_template('index.html')
 
-# --- 保存完了画面 ---
+# --- [4] 保存完了ページ (保存後に遷移) ---
 @app.route('/success')
 def success():
     return '''
     <html>
     <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;text-align:center;}
-    button{padding:15px 30px;font-size:1rem;background:#007bff;color:white;border:none;border-radius:10px;}</style></head>
-    <body><h1>✅ 保存完了</h1><p>データをGoogle Driveに保存しました。</p><br>
-    <a href="/"><button>マイページへ戻る</button></a></body></html>
+    button{padding:20px 40px;font-size:1.2rem;background:#007bff;color:white;border:none;border-radius:12px;font-weight:bold;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.1);}</style></head>
+    <body><h1 style="font-size:2rem;color:#28a745;">✅ 保存完了</h1><p style="font-size:1.1rem;margin-bottom:40px;">データをGoogle Driveに保存しました。</p>
+    <a href="/mypage"><button>マイページへ戻る</button></a></body></html>
     '''
 
+# --- 認証ロジック ---
 @app.route('/login')
 def login():
     flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
@@ -80,7 +84,7 @@ def callback():
     flow.fetch_token(code=request.args.get('code'))
     creds = flow.credentials
     session['credentials'] = {'token': creds.token, 'refresh_token': creds.refresh_token, 'token_uri': creds.token_uri, 'client_id': creds.client_id, 'client_secret': creds.client_secret, 'scopes': creds.scopes}
-    return redirect(url_for('index'))
+    return redirect(url_for('mypage')) # 同意後はマイページへ
 
 @app.route('/save', methods=['POST'])
 def save():

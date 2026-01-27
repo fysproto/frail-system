@@ -6,43 +6,69 @@
     <style>
         html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; }
         #app { display: flex; flex-direction: column; height: 100%; }
-        header { height: 70px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; }
+        header { height: 80px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; }
         #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-        #drop-zone { width: 160px; height: 160px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; font-size: 0.9rem; }
-        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; font-size: 1.1rem; }
-        #seals-container { height: 180px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 10px 0; }
-        .seal-row { display: flex; gap: 12px; justify-content: center; width: 100%; }
-        .seal { width: 75px; height: 75px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        #input-form { display: none; width: 90%; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; font-size: 1.1rem; }
-        .input-group input { width: 100px; padding: 10px; font-size: 1.2rem; border: 1px solid #ddd; border-radius: 8px; text-align: right; }
-        .status-dot { width: 30px; height: 30px; border-radius: 50%; background: #ddd; }
+        #drop-zone { width: 180px; height: 180px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; font-size: 1rem; position: relative; }
+        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; font-size: 1.2rem; animation: pop 0.2s; }
+        #seals-container { height: 200px; background: #fff; border-top: 1px solid #dee2e6; display: flex; align-items: center; justify-content: center; padding-bottom: 20px; }
+        .seal-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; width: 100%; padding: 0 10px; }
+        .seal { width: 75px; height: 75px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; box-shadow: 0 5px 10px rgba(0,0,0,0.15); touch-action: none; }
+        
+        /* 身体計測フォームのレイアウト修正（身長・体重横並び） */
+        #input-form { display: none; width: 85%; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .form-row { margin-bottom: 15px; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { font-size: 0.9rem; color: #666; font-weight: bold; }
+        .input-group input { width: 100%; padding: 12px; font-size: 1.4rem; border: 2px solid #eee; border-radius: 10px; text-align: center; box-sizing: border-box; }
+        .horizontal-group { display: flex; gap: 10px; } /* 横並び用 */
+        .bmi-display { text-align: center; background: #f8f9fa; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; }
+        
+        .status-dot { width: 35px; height: 35px; border-radius: 50%; background: #ddd; flex-shrink: 0; }
         .bg-blue { background: #007bff !important; } .bg-red { background: #dc3545 !important; } .bg-yellow { background: #ffc107 !important; color: #000; }
-        #next-btn { display: none; margin: 20px auto; padding: 15px 60px; border-radius: 30px; border: none; background: #28a745; color: white; font-size: 1.2rem; font-weight: bold; }
+        #next-btn { display: none; margin: 20px auto; padding: 18px 70px; border-radius: 35px; border: none; background: #28a745; color: white; font-size: 1.3rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        @keyframes pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body ontouchmove="event.preventDefault()">
 <div id="app">
-    <header><div id="q-progress" style="font-size:0.8rem; color:#6c757d;"></div><div id="q-text" style="font-weight:bold; font-size:1.1rem;"></div></header>
+    <header>
+        <div id="q-progress" style="font-size:0.9rem; color:#6c757d; margin-bottom:5px;"></div>
+        <div id="q-text" style="font-weight:bold; font-size:1.1rem; padding:0 10px;"></div>
+    </header>
+    
     <div id="main-stage">
         <div id="drop-zone-wrap"><div id="drop-zone">ここにドロップ</div></div>
+        
         <div id="input-form">
-            <div class="input-group"><span>握力 (kg)</span><input type="number" id="grip" oninput="judgeGrip()"><div id="dot-grip" class="status-dot"></div></div>
-            <div class="input-group"><span>身長 (cm)</span><input type="number" id="height" oninput="calcBMI()"><div></div></div>
-            <div class="input-group"><span>体重 (kg)</span><input type="number" id="weight" oninput="calcBMI()"><div></div></div>
-            <div class="input-group"><span>BMI</span><span id="bmi-val">--</span><div id="dot-bmi" class="status-dot"></div></div>
+            <div class="form-row">
+                <div class="input-group">
+                    <label>握力 (kg)</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="number" id="grip" step="0.1" inputmode="decimal" oninput="judgeGrip()">
+                        <div id="dot-grip" class="status-dot"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-row horizontal-group">
+                <div class="input-group" style="flex:1;"><label>身長 (cm)</label><input type="number" id="height" step="0.1" inputmode="decimal" oninput="calcBMI()"></div>
+                <div class="input-group" style="flex:1;"><label>体重 (kg)</label><input type="number" id="weight" step="0.1" inputmode="decimal" oninput="calcBMI()"></div>
+            </div>
+            <div class="bmi-display"><span>BMI: <span id="bmi-val">--</span></span><div id="dot-bmi" class="status-dot"></div></div>
         </div>
+        
         <button id="next-btn" onclick="goNext()">次へ進む</button>
     </div>
     <div id="seals-container"></div>
 </div>
+
 <script>
-    // (質問データとロジックは以前と同じ)
+    // ハイディが選んだ3つのステップ
     const questions = [
-        { id: "q12", text: "Q12. 地域活動に参加していますか?", opts: ["週1以上", "月1以上", "年数回", "参加せず"], type: "neutral" },
-        { id: "q7", text: "Q7. 歩く速度が遅くなりましたか?", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
-        { id: "calc", text: "身体計測", type: "calc" }
+        { id: "q12", text: "Q12. 地域活動に参加していますか？", opts: ["週1以上", "月1以上", "年数回", "参加せず"], type: "neutral" },
+        { id: "q7", text: "Q7. 歩く速度が遅くなりましたか？", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
+        { id: "calc", text: "身体計測（握力・BMI）", type: "calc" }
     ];
+
     let currentIdx = 0; let allAnswers = {};
     const dropZone = document.getElementById('drop-zone');
     const container = document.getElementById('seals-container');
@@ -96,11 +122,11 @@
             active.remove(); document.ontouchmove = null;
         };
     }
-    function updatePos(t) { active.style.left = (t.clientX - 37) + 'px'; active.style.top = (t.clientY - 37) + 'px'; }
+    function updatePos(t) { active.style.left = (t.clientX - 40) + 'px'; active.style.top = (t.clientY - 40) + 'px'; }
 
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
-        document.getElementById('dot-grip').className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
+        if(!isNaN(val)) document.getElementById('dot-grip').className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
     }
     function calcBMI() {
         const h = parseFloat(document.getElementById('height').value) / 100;
@@ -116,13 +142,11 @@
         if (currentIdx === questions.length - 1) {
             allAnswers.grip = document.getElementById('grip').value;
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
-            fetch('/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(allAnswers)
-            })
+            nextBtn.innerText = "保存中...";
+            nextBtn.disabled = true;
+            fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) })
             .then(res => res.json())
-            .then(res => { if(res.status==='success') window.location.href="/success"; });
+            .then(data => { if(data.status==='success') window.location.href="/success"; });
         } else { currentIdx++; load(); }
     }
     load();
