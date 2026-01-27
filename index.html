@@ -1,135 +1,100 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <style>
-        html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; }
-        #app { display: flex; flex-direction: column; height: 100%; }
-        header { height: 70px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; }
-        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-        #drop-zone { width: 150px; height: 150px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-size: 0.8rem; }
-        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; animation: pop 0.2s; }
-        #seals-container { height: 180px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 10px 0; }
-        .seal-row { display: flex; gap: 12px; justify-content: center; width: 100%; }
-        .seal { width: 68px; height: 68px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-        #input-form { display: none; width: 90%; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-        .input-group input { width: 80px; padding: 8px; font-size: 1.1rem; border: 1px solid #ddd; border-radius: 5px; text-align: right; }
-        .status-dot { width: 25px; height: 25px; border-radius: 50%; background: #ddd; }
-        .bg-blue { background: #007bff !important; } .bg-red { background: #dc3545 !important; } .bg-yellow { background: #ffc107 !important; color: #000; }
-        #next-btn { display: none; margin: 10px auto; padding: 12px 50px; border-radius: 25px; border: none; background: #28a745; color: white; font-weight: bold; }
-        @keyframes pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
-    </style>
-</head>
-<body ontouchmove="event.preventDefault()">
-<div id="app">
-    <header>
-        <div id="q-progress" style="font-size: 0.7rem; color: #6c757d;"></div>
-        <div id="q-text" style="font-weight: bold; font-size: 0.9rem; padding: 0 10px;"></div>
-    </header>
-    <div id="main-stage">
-        <div id="drop-zone-wrap"><div id="drop-zone">ここにドロップ</div></div>
-        <div id="input-form">
-            <div class="input-group"><span>握力 (kg)</span><input type="number" id="grip" placeholder="0.0" oninput="judgeGrip()"><div id="dot-grip" class="status-dot"></div></div>
-            <div class="input-group"><span>身長 (cm)</span><input type="number" id="height" placeholder="0.0" oninput="calcBMI()"><div></div></div>
-            <div class="input-group"><span>体重 (kg)</span><input type="number" id="weight" placeholder="0.0" oninput="calcBMI()"><div></div></div>
-            <div class="input-group" style="border-top: 1px solid #eee; padding-top: 10px;"><span>BMI</span><span id="bmi-val" style="font-weight: bold; font-size: 1.1rem;">--</span><div id="dot-bmi" class="status-dot"></div></div>
-        </div>
-        <button id="next-btn" onclick="goNext()">次へ進む</button>
-    </div>
-    <div id="seals-container"></div>
-</div>
-<script>
-    const questions = [
-        { id: "q12", text: "Q12. 地域活動に参加していますか？", opts: ["週1以上", "月1以上", "年数回", "以前は参加", "参加せず"], type: "neutral" },
-        { id: "q7", text: "Q7. 歩く速度が遅くなりましたか？", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
-        { id: "calc", text: "身体計測", type: "calc" }
-    ];
-    let currentIdx = 0; let allAnswers = {};
-    const dropZone = document.getElementById('drop-zone');
-    const container = document.getElementById('seals-container');
-    const inputForm = document.getElementById('input-form');
-    const nextBtn = document.getElementById('next-btn');
+import streamlit as st
+import streamlit.components.v1 as components
+import json
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaInMemoryUpload
+from datetime import datetime
 
-    function load() {
-        const q = questions[currentIdx];
-        document.getElementById('q-progress').innerText = `STEP ${currentIdx + 1} / ${questions.length}`;
-        document.getElementById('q-text').innerText = q.text;
-        nextBtn.style.display = "none";
-        if (q.type === "calc") {
-            document.getElementById('drop-zone-wrap').style.display = "none";
-            container.style.display = "none";
-            inputForm.style.display = "block";
-            nextBtn.style.display = "block";
-        } else {
-            document.getElementById('drop-zone-wrap').style.display = "block";
-            container.style.display = "flex";
-            inputForm.style.display = "none";
-            renderSeals(q.opts);
-            dropZone.innerHTML = "ここにドロップ";
-        }
-    }
+# --- 設定 ---
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
+REDIRECT_URI = "https://frail-system-fnpbjmywss88x6zh2a9egn.streamlit.app/"
 
-    function renderSeals(opts) {
-        container.innerHTML = "";
-        const row1 = document.createElement('div'); row1.className = 'seal-row';
-        const row2 = document.createElement('div'); row2.className = 'seal-row';
-        opts.forEach((opt, i) => {
-            const s = document.createElement('div'); s.className = 'seal'; s.innerText = opt;
-            s.addEventListener('touchstart', onStart, {passive: false});
-            (i < 3) ? row1.appendChild(s) : row2.appendChild(s);
-        });
-        container.appendChild(row1); if(opts.length > 3) container.appendChild(row2);
-    }
+st.set_page_config(page_title="フレイル予防システム", layout="centered")
 
-    let active = null;
-    function onStart(e) {
-        active = e.target.cloneNode(true); document.body.appendChild(active);
-        active.style.position = 'fixed'; active.style.zIndex = '1000';
-        updatePos(e.touches[0]);
-        document.ontouchmove = (ev) => { ev.preventDefault(); updatePos(ev.touches[0]); };
-        document.ontouchend = (ev) => {
-            const t = ev.changedTouches[0]; const r = dropZone.getBoundingClientRect();
-            if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) {
-                const q = questions[currentIdx];
-                let c = "bg-yellow";
-                if(q.type==="logic") c = (q.red === active.innerText) ? "bg-red" : "bg-blue";
-                dropZone.innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
-                allAnswers[q.id] = active.innerText; nextBtn.style.display = "block";
+def authenticate_google():
+    if 'credentials' not in st.session_state:
+        client_config = {
+            "web": {
+                "client_id": st.secrets["google_client_id"],
+                "project_id": "frail-app-project",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_secret": st.secrets["google_client_secret"],
+                "redirect_uris": [REDIRECT_URI]
             }
-            active.remove(); document.ontouchmove = null;
-        };
-    }
-    function updatePos(t) { active.style.left = (t.clientX - 34) + 'px'; active.style.top = (t.clientY - 34) + 'px'; }
-    function judgeGrip() {
-        const val = parseFloat(document.getElementById('grip').value);
-        document.getElementById('dot-grip').className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
-    }
-    function calcBMI() {
-        const h = parseFloat(document.getElementById('height').value) / 100;
-        const w = parseFloat(document.getElementById('weight').value);
-        if (h > 0 && w > 0) {
-            const bmi = (w / (h * h)).toFixed(1);
-            document.getElementById('bmi-val').innerText = bmi;
-            document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
         }
-    }
+        if "code" in st.query_params:
+            flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
+            flow.fetch_token(code=st.query_params["code"])
+            st.session_state.credentials = flow.credentials
+            st.query_params.clear()
+            st.rerun()
+        else:
+            flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
+            auth_url, _ = flow.authorization_url(prompt='consent')
+            st.title("フレイル測定アプリ")
+            st.link_button("Googleアカウントでログイン", auth_url)
+            return None
+    return st.session_state.credentials
 
-    function goNext() {
-        if (currentIdx === questions.length - 1) {
-            allAnswers.grip = document.getElementById('grip').value;
-            allAnswers.bmi = document.getElementById('bmi-val').innerText;
-            allAnswers.is_done = "true";
+def save_data_to_drive(data):
+    creds = st.session_state.credentials
+    service = build('drive', 'v3', credentials=creds)
+    filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    file_metadata = {'name': filename, 'mimeType': 'application/json'}
+    media = MediaInMemoryUpload(json.dumps(data, ensure_ascii=False).encode('utf-8'), mimetype='application/json')
+    service.files().create(body=file_metadata, media_body=media).execute()
 
-            // ★ Sandbox制限を回避して親画面へデータを送る唯一の手段
-            const searchParams = new URLSearchParams(allAnswers).toString();
-            window.top.location.href = "?" + searchParams;
-        } else {
-            currentIdx++; load();
-        }
-    }
-    load();
-</script>
-</body>
-</html>
+creds = authenticate_google()
+
+if creds:
+    if "view" not in st.session_state:
+        st.session_state.view = "mypage"
+
+    # --- マイページ ---
+    if st.session_state.view == "mypage":
+        st.title("🏠 マイページ")
+        st.write("健康状態をチェックしましょう。")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📏 測定を開始する", use_container_width=True):
+                st.session_state.view = "measure"
+                st.rerun()
+        with col2:
+            st.button("📋 過去の履歴（準備中）", use_container_width=True)
+
+    # --- 測定画面 ---
+    elif st.session_state.view == "measure":
+        st.markdown("""
+            <style>
+                [data-testid="stHeader"], header, footer { display: none !important; }
+                .main .block-container { padding: 0 !important; margin: 0 !important; }
+                iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; z-index: 9999; }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        try:
+            with open("index.html", "r", encoding="utf-8") as f:
+                html_content = f.read()
+            
+            # HTMLコンポーネントを表示。戻り値(res)でイベントをキャッチ
+            res = components.html(html_content, height=1200)
+            
+            # 完了イベントが届いたら保存して遷移
+            if res and "is_done" in res:
+                save_data_to_drive(res)
+                st.session_state.view = "result"
+                st.rerun()
+        except Exception as e:
+            st.error(f"システムエラー: {e}")
+
+    # --- 保存完了画面 ---
+    elif st.session_state.view == "result":
+        st.balloons()
+        st.title("✅ 保存完了")
+        st.success("測定データをGoogle Driveに保存しました。")
+        if st.button("マイページへ戻る"):
+            st.session_state.view = "mypage"
+            st.rerun()
