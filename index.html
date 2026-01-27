@@ -4,133 +4,300 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; }
+        html, body {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            font-family: sans-serif;
+            margin: 0;
+            background: #f0f4f8;
+        }
         #app { display: flex; flex-direction: column; height: 100%; }
-        header { height: 70px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; }
-        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-        #drop-zone { width: 150px; height: 150px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; font-size: 0.8rem; }
-        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: absolute; animation: pop 0.2s; }
-        #seals-container { height: 180px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 10px 0; }
-        .seal-row { display: flex; gap: 12px; justify-content: center; width: 100%; }
-        .seal { width: 68px; height: 68px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-        #input-form { display: none; width: 90%; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-        .input-group input { width: 80px; padding: 8px; font-size: 1.1rem; border: 1px solid #ddd; border-radius: 5px; text-align: right; }
-        .status-dot { width: 25px; height: 25px; border-radius: 50%; background: #ddd; }
-        .bg-blue { background: #007bff !important; } .bg-red { background: #dc3545 !important; } .bg-yellow { background: #ffc107 !important; color: #000; }
-        #next-btn { display: none; margin: 10px auto; padding: 12px 50px; border-radius: 25px; border: none; background: #28a745; color: white; font-weight: bold; }
-        @keyframes pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+        header {
+            height: 70px;
+            background: #fff;
+            text-align: center;
+            border-bottom: 2px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        #main-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        #drop-zone {
+            width: 150px;
+            height: 150px;
+            border: 4px dashed #adb5bd;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            position: relative;
+            color: #adb5bd;
+            font-size: 0.8rem;
+        }
+        .placed-seal {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: absolute;
+            animation: pop 0.2s;
+        }
+        #seals-container {
+            height: 180px;
+            background: #fff;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px 0;
+        }
+        .seal-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            width: 100%;
+        }
+        .seal {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        #input-form {
+            display: none;
+            width: 90%;
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .input-group input {
+            width: 80px;
+            padding: 8px;
+            font-size: 1.1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: right;
+        }
+        .status-dot {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #ddd;
+        }
+        .bg-blue { background: #007bff !important; }
+        .bg-red { background: #dc3545 !important; }
+        .bg-yellow { background: #ffc107 !important; color: #000; }
+        #next-btn {
+            display: none;
+            margin: 10px auto;
+            padding: 12px 50px;
+            border-radius: 25px;
+            border: none;
+            background: #28a745;
+            color: white;
+            font-weight: bold;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.6); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
+
 <body ontouchmove="event.preventDefault()">
 <div id="app">
     <header>
         <div id="q-progress" style="font-size: 0.7rem; color: #6c757d;"></div>
         <div id="q-text" style="font-weight: bold; font-size: 0.9rem; padding: 0 10px;"></div>
     </header>
+
     <div id="main-stage">
-        <div id="drop-zone-wrap"><div id="drop-zone">ここにドロップ</div></div>
-        <div id="input-form">
-            <div class="input-group"><span>握力 (kg)</span><input type="number" id="grip" placeholder="0.0" oninput="judgeGrip()"><div id="dot-grip" class="status-dot"></div></div>
-            <div class="input-group"><span>身長 (cm)</span><input type="number" id="height" placeholder="0.0" oninput="calcBMI()"><div></div></div>
-            <div class="input-group"><span>体重 (kg)</span><input type="number" id="weight" placeholder="0.0" oninput="calcBMI()"><div></div></div>
-            <div class="input-group" style="border-top: 1px solid #eee; padding-top: 10px;"><span>BMI</span><span id="bmi-val" style="font-weight: bold; font-size: 1.1rem;">--</span><div id="dot-bmi" class="status-dot"></div></div>
+        <div id="drop-zone-wrap">
+            <div id="drop-zone">ここにドロップ</div>
         </div>
+
+        <div id="input-form">
+            <div class="input-group">
+                <span>握力 (kg)</span>
+                <input type="number" id="grip" placeholder="0.0" oninput="judgeGrip()">
+                <div id="dot-grip" class="status-dot"></div>
+            </div>
+            <div class="input-group">
+                <span>身長 (cm)</span>
+                <input type="number" id="height" placeholder="0.0" oninput="calcBMI()">
+                <div></div>
+            </div>
+            <div class="input-group">
+                <span>体重 (kg)</span>
+                <input type="number" id="weight" placeholder="0.0" oninput="calcBMI()">
+                <div></div>
+            </div>
+            <div class="input-group" style="border-top:1px solid #eee; padding-top:10px;">
+                <span>BMI</span>
+                <span id="bmi-val" style="font-weight:bold; font-size:1.1rem;">--</span>
+                <div id="dot-bmi" class="status-dot"></div>
+            </div>
+        </div>
+
         <button id="next-btn" onclick="goNext()">次へ進む</button>
     </div>
+
     <div id="seals-container"></div>
 </div>
+
 <script>
-    const questions = [
-        { id: "q12", text: "Q12. 地域活動に参加していますか？", opts: ["週1以上", "月1以上", "年数回", "以前は参加", "参加せず"], type: "neutral" },
-        { id: "q7", text: "Q7. 歩く速度が遅くなりましたか？", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
-        { id: "calc", text: "身体計測", type: "calc" }
-    ];
-    let currentIdx = 0; let allAnswers = {};
-    const dropZone = document.getElementById('drop-zone');
-    const container = document.getElementById('seals-container');
-    const inputForm = document.getElementById('input-form');
-    const nextBtn = document.getElementById('next-btn');
+const questions = [
+    { id: "q12", text: "Q12. 地域活動に参加していますか？", opts: ["週1以上", "月1以上", "年数回", "以前は参加", "参加せず"], type: "neutral" },
+    { id: "q7", text: "Q7. 歩く速度が遅くなりましたか？", opts: ["はい", "いいえ"], type: "logic", red: "はい", blue: "いいえ" },
+    { id: "calc", text: "身体計測", type: "calc" }
+];
 
-    function load() {
-        const q = questions[currentIdx];
-        document.getElementById('q-progress').innerText = `STEP ${currentIdx + 1} / ${questions.length}`;
-        document.getElementById('q-text').innerText = q.text;
-        nextBtn.style.display = "none";
-        if (q.type === "calc") {
-            document.getElementById('drop-zone-wrap').style.display = "none";
-            container.style.display = "none";
-            inputForm.style.display = "block";
-            nextBtn.style.display = "block";
-        } else {
-            document.getElementById('drop-zone-wrap').style.display = "block";
-            container.style.display = "flex";
-            inputForm.style.display = "none";
-            renderSeals(q.opts);
-            dropZone.innerHTML = "ここにドロップ";
-        }
+let currentIdx = 0;
+let allAnswers = {};
+
+const dropZone = document.getElementById("drop-zone");
+const container = document.getElementById("seals-container");
+const inputForm = document.getElementById("input-form");
+const nextBtn = document.getElementById("next-btn");
+
+function load() {
+    const q = questions[currentIdx];
+    document.getElementById("q-progress").innerText = `STEP ${currentIdx + 1} / ${questions.length}`;
+    document.getElementById("q-text").innerText = q.text;
+    nextBtn.style.display = "none";
+
+    if (q.type === "calc") {
+        document.getElementById("drop-zone-wrap").style.display = "none";
+        container.style.display = "none";
+        inputForm.style.display = "block";
+        nextBtn.style.display = "block";
+    } else {
+        document.getElementById("drop-zone-wrap").style.display = "block";
+        container.style.display = "flex";
+        inputForm.style.display = "none";
+        renderSeals(q.opts);
+        dropZone.innerHTML = "ここにドロップ";
     }
+}
 
-    function renderSeals(opts) {
-        container.innerHTML = "";
-        const row1 = document.createElement('div'); row1.className = 'seal-row';
-        const row2 = document.createElement('div'); row2.className = 'seal-row';
-        opts.forEach((opt, i) => {
-            const s = document.createElement('div'); s.className = 'seal'; s.innerText = opt;
-            s.addEventListener('touchstart', onStart, {passive: false});
-            (i < 3) ? row1.appendChild(s) : row2.appendChild(s);
-        });
-        container.appendChild(row1); if(opts.length > 3) container.appendChild(row2);
-    }
+function renderSeals(opts) {
+    container.innerHTML = "";
+    const row1 = document.createElement("div");
+    row1.className = "seal-row";
+    const row2 = document.createElement("div");
+    row2.className = "seal-row";
 
-    let active = null;
-    function onStart(e) {
-        active = e.target.cloneNode(true); document.body.appendChild(active);
-        active.style.position = 'fixed'; active.style.zIndex = '1000';
-        updatePos(e.touches[0]);
-        document.ontouchmove = (ev) => { ev.preventDefault(); updatePos(ev.touches[0]); };
-        document.ontouchend = (ev) => {
-            const t = ev.changedTouches[0]; const r = dropZone.getBoundingClientRect();
-            if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) {
-                const q = questions[currentIdx];
-                let c = "bg-yellow";
-                if(q.type==="logic") c = (q.red === active.innerText) ? "bg-red" : "bg-blue";
-                dropZone.innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
-                allAnswers[q.id] = active.innerText; nextBtn.style.display = "block";
+    opts.forEach((opt, i) => {
+        const s = document.createElement("div");
+        s.className = "seal";
+        s.innerText = opt;
+        s.addEventListener("touchstart", onStart, { passive: false });
+        (i < 3 ? row1 : row2).appendChild(s);
+    });
+
+    container.appendChild(row1);
+    if (opts.length > 3) container.appendChild(row2);
+}
+
+let active = null;
+
+function onStart(e) {
+    active = e.target.cloneNode(true);
+    document.body.appendChild(active);
+    active.style.position = "fixed";
+    active.style.zIndex = "1000";
+    updatePos(e.touches[0]);
+
+    document.ontouchmove = ev => {
+        ev.preventDefault();
+        updatePos(ev.touches[0]);
+    };
+
+    document.ontouchend = ev => {
+        const t = ev.changedTouches[0];
+        const r = dropZone.getBoundingClientRect();
+        if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) {
+            const q = questions[currentIdx];
+            let c = "bg-yellow";
+            if (q.type === "logic") {
+                c = (q.red === active.innerText) ? "bg-red" : "bg-blue";
             }
-            active.remove(); document.ontouchmove = null;
-        };
-    }
-    function updatePos(t) { active.style.left = (t.clientX - 34) + 'px'; active.style.top = (t.clientY - 34) + 'px'; }
-    function judgeGrip() {
-        const val = parseFloat(document.getElementById('grip').value);
-        document.getElementById('dot-grip').className = "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
-    }
-    function calcBMI() {
-        const h = parseFloat(document.getElementById('height').value) / 100;
-        const w = parseFloat(document.getElementById('weight').value);
-        if (h > 0 && w > 0) {
-            const bmi = (w / (h * h)).toFixed(1);
-            document.getElementById('bmi-val').innerText = bmi;
-            document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
+            dropZone.innerHTML = `<div class="placed-seal ${c}">${active.innerText}</div>`;
+            allAnswers[q.id] = active.innerText;
+            nextBtn.style.display = "block";
         }
+        active.remove();
+        document.ontouchmove = null;
+    };
+}
+
+function updatePos(t) {
+    active.style.left = (t.clientX - 34) + "px";
+    active.style.top = (t.clientY - 34) + "px";
+}
+
+function judgeGrip() {
+    const val = parseFloat(document.getElementById("grip").value);
+    document.getElementById("dot-grip").className =
+        "status-dot " + (val < 28 ? "bg-red" : "bg-blue");
+}
+
+function calcBMI() {
+    const h = parseFloat(document.getElementById("height").value) / 100;
+    const w = parseFloat(document.getElementById("weight").value);
+    if (h > 0 && w > 0) {
+        const bmi = (w / (h * h)).toFixed(1);
+        document.getElementById("bmi-val").innerText = bmi;
+        document.getElementById("dot-bmi").className =
+            "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
     }
+}
 
-    function goNext() {
-        if (currentIdx === questions.length - 1) {
-            allAnswers.grip = document.getElementById('grip').value;
-            allAnswers.bmi = document.getElementById('bmi-val').innerText;
-            allAnswers.is_done = true;
+function goNext() {
+    if (currentIdx === questions.length - 1) {
+        allAnswers.grip = document.getElementById("grip").value;
+        allAnswers.bmi = document.getElementById("bmi-val").innerText;
+        allAnswers.is_done = true;
 
-            // ★ 変更はここだけ（postMessage → URL遷移）
-            const payload = encodeURIComponent(JSON.stringify(allAnswers));
-            window.location.href = `/?done=1&data=" + encodeURIComponent(JSON.stringify(allAnswers));
-
-        } else {
-            currentIdx++; load();
-        }
+        // ★ 唯一の変更点：URL エンコードして遷移
+        const payload = encodeURIComponent(JSON.stringify(allAnswers));
+        window.location.href = "/?done=1&data=" + payload;
+    } else {
+        currentIdx++;
+        load();
     }
-    load();
+}
+
+load();
 </script>
 </body>
 </html>
