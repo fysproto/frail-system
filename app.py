@@ -50,38 +50,55 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
-    # 1. URLパラメータをチェック（ここが重要！）
-    # query_paramsにデータが入っていれば、それは「測定終了」のサイン
-    ans = st.query_params.to_dict()
+    # 状態管理（どの画面を表示するか）
+    if "view" not in st.session_state:
+        st.session_state.view = "mypage"  # 初期値はマイページ
 
-    # 2. もしデータ（例えばq12）が届いていたら保存処理へ
-    if "q12" in ans:
-        # 保存実行
-        save_data_to_drive(ans)
+    # --- マイページ画面 ---
+    if st.session_state.view == "mypage":
+        st.title("🏠 マイページ")
+        st.write("ようこそ！あなたの健康状態をチェックしましょう。")
         
-        # 画面表示
-        st.balloons()
-        st.success("Google Driveにデータを保存しました。")
-        if st.button("最初からやり直す"):
-            # URLをクリアしてリロード
-            st.query_params.clear()
-            st.rerun()
-    
-    # 3. データがまだ届いていないなら測定画面を表示
-    else:
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📏 測定を開始する", use_container_width=True):
+                st.session_state.view = "measure"
+                st.rerun()
+        with col2:
+            if st.button("📋 過去の履歴（準備中）", use_container_width=True):
+                st.info("過去の履歴表示機能は現在開発中です。")
+
+    # --- 測定画面（HTML表示） ---
+    elif st.session_state.view == "measure":
+        # HTMLをフルスクリーンで出すためのCSS
         st.markdown("""
             <style>
                 [data-testid="stHeader"], header, footer { display: none !important; }
                 .main .block-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
                 html, body, [data-testid="stAppViewContainer"] { overflow: hidden !important; position: fixed; width: 100%; height: 100%; }
-                iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; z-index: 99999; }
+                iframe { width: 100vw !important; height: 100vh !important; border: none !important; }
             </style>
         """, unsafe_allow_html=True)
 
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
-            # ここでは res = ... は使わず、垂れ流すだけでOK
-            components.html(html_content, height=1200)
+            
+            # HTMLからのメッセージ（postMessage）を待つ
+            res = components.html(html_content, height=1200)
+            
+            if res and "is_done" in res:
+                save_data_to_drive(res)
+                st.session_state.view = "result"
+                st.rerun()
         except Exception as e:
             st.error(f"システムエラー: {e}")
+
+    # --- 保存完了画面 ---
+    elif st.session_state.view == "result":
+        st.balloons()
+        st.title("✅ 保存完了")
+        st.success("測定データをGoogle Driveに保存しました。")
+        if st.button("マイページへ戻る"):
+            st.session_state.view = "mypage"
+            st.rerun()
