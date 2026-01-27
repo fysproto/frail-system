@@ -97,14 +97,14 @@ if creds:
         """, unsafe_allow_html=True)
         
         try:
-            with open("index_standalone.html", "r", encoding="utf-8") as f:
+            with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
             
             # st.htmlで表示（iframeなし）
             st.html(html_content)
             
         except FileNotFoundError:
-            st.error("index_standalone.htmlが見つかりません")
+            st.error("index.htmlが見つかりません")
             if st.button("マイページへ戻る"):
                 st.session_state.view = "mypage"
                 st.rerun()
