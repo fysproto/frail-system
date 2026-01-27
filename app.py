@@ -50,16 +50,16 @@ def save_data_to_drive(data):
 creds = authenticate_google()
 
 if creds:
-    # ★ ここが生命線：URLパラメータに回答データ（q12など）が入っているかチェック
+    # URLから回答が届いているかチェック
     params = st.query_params.to_dict()
-
+    
     if "view" not in st.session_state:
         st.session_state.view = "mypage"
 
-    # もしURLに「測定完了(is_done)」のフラグが立っていたら、強制的に保存画面へ
-    if params.get("is_done") == "true":
+    # HTMLからURL経由でデータが届いた瞬間の処理
+    if "is_done" in params:
         save_data_to_drive(params)
-        st.query_params.clear() # URLを掃除
+        st.query_params.clear()
         st.session_state.view = "result"
         st.rerun()
 
@@ -87,7 +87,7 @@ if creds:
         try:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
-            components.html(html_content, height=2000)
+            components.html(html_content, height=1200)
         except Exception as e:
             st.error(f"システムエラー: {e}")
 
@@ -99,16 +99,3 @@ if creds:
         if st.button("マイページへ戻る"):
             st.session_state.view = "mypage"
             st.rerun()
-elif st.session_state.view == "measure":
-        # (CSS部分は省略)
-        res = components.html(html_content, height=1200)
-        
-        # デバッグ用：受け取ったデータを画面上部に出す
-        if res is not None:
-            st.write("Python received:", res) # これが画面に出れば通信成功
-            save_data_to_drive(res)
-            st.session_state.view = "result"
-            st.rerun()
-        else:
-            # 届いていない間はこれが出る
-            st.caption("Waiting for data from HTML...")
