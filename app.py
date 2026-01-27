@@ -1,3 +1,4 @@
+st.write("DEBUG query_params:", dict(st.query_params))
 import streamlit as st
 import streamlit.components.v1 as components
 import json
