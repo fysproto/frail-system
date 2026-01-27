@@ -42,11 +42,13 @@ def authenticate_google():
 def save_data_to_drive(data):
     creds = st.session_state.credentials
     service = build('drive', 'v3', credentials=creds)
-    # 業者への指示としてCSV形式に変換するロジックをここに置く
-    csv_content = ",".join([str(v) for v in data.values()])
+    # CSV変換ロジック
+    header = "item,value\n"
+    content = "\n".join([f"{k},{v}" for k, v in data.items() if k != "is_done"])
+    csv_body = header + content
     filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     file_metadata = {'name': filename, 'mimeType': 'text/csv'}
-    media = MediaInMemoryUpload(csv_content.encode('utf-8'), mimetype='text/csv')
+    media = MediaInMemoryUpload(csv_body.encode('utf-8'), mimetype='text/csv')
     service.files().create(body=file_metadata, media_body=media).execute()
 
 creds = authenticate_google()
@@ -57,14 +59,9 @@ if creds:
 
     if st.session_state.view == "mypage":
         st.title("🏠 マイページ")
-        st.write("健康状態をチェックしましょう。")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📏 測定を開始する", use_container_width=True):
-                st.session_state.view = "measure"
-                st.rerun()
-        with col2:
-            st.button("📋 過去の履歴（準備中）", use_container_width=True)
+        if st.button("📏 測定を開始する", use_container_width=True):
+            st.session_state.view = "measure"
+            st.rerun()
 
     elif st.session_state.view == "measure":
         st.markdown("<style>[data-testid='stHeader'],header,footer{display:none;}.main .block-container{padding:0;}</style>", unsafe_allow_html=True)
@@ -72,21 +69,19 @@ if creds:
             with open("index.html", "r", encoding="utf-8") as f:
                 html_content = f.read()
             
-            # 【設計】公式コンポーネントとして通信を確立
-            # ※ここで返ってくる 'res' が Python と JS の架け橋
+            # Aの核心：Custom Component通信の戻り値をキャッチ
             res = components.html(html_content, height=1200)
             
-            if res is not None and "is_done" in res:
+            if res and res.get("is_done"):
                 save_data_to_drive(res)
                 st.session_state.view = "result"
                 st.rerun()
         except Exception as e:
-            st.error(f"システムエラー: {e}")
+            st.error(f"Error: {e}")
 
     elif st.session_state.view == "result":
         st.balloons()
         st.title("✅ 保存完了")
-        st.success("CSVデータをGoogle Driveに保存しました。")
         if st.button("マイページへ戻る"):
             st.session_state.view = "mypage"
             st.rerun()
