@@ -124,7 +124,7 @@
 
             // ★ 変更はここだけ（postMessage → URL遷移）
             const payload = encodeURIComponent(JSON.stringify(allAnswers));
-            window.location.href = `/?done=1&data=${payload}`;
+            window.location.href = `/?done=1&data=" + encodeURIComponent(JSON.stringify(allAnswers));
 
         } else {
             currentIdx++; load();
