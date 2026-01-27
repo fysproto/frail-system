@@ -99,3 +99,16 @@ if creds:
         if st.button("マイページへ戻る"):
             st.session_state.view = "mypage"
             st.rerun()
+elif st.session_state.view == "measure":
+        # (CSS部分は省略)
+        res = components.html(html_content, height=1200)
+        
+        # デバッグ用：受け取ったデータを画面上部に出す
+        if res is not None:
+            st.write("Python received:", res) # これが画面に出れば通信成功
+            save_data_to_drive(res)
+            st.session_state.view = "result"
+            st.rerun()
+        else:
+            # 届いていない間はこれが出る
+            st.caption("Waiting for data from HTML...")

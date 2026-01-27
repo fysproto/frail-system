@@ -156,3 +156,45 @@
 </script>
 </body>
 </html>
+<div id="debug-log" style="position:fixed; bottom:0; left:0; width:100%; height:100px; background:rgba(0,0,0,0.8); color:lime; font-size:10px; overflow-y:auto; z-index:99999; pointer-events:none; font-family:monospace; padding:5px;">
+    DEBUG LOG STARTED...
+</div>
+
+<script>
+    // ログを画面に書き出す関数
+    function log(msg) {
+        const div = document.getElementById('debug-log');
+        div.innerHTML += "<br>> " + msg;
+        div.scrollTop = div.scrollHeight;
+    }
+
+    // ブラウザの標準エラーをキャッチして画面に出す
+    window.onerror = function(msg, url, line) {
+        log("ERROR: " + msg + " (line:" + line + ")");
+    };
+
+    // goNextをデバッグ用に強化
+    function goNext() {
+        log("Next button clicked. CurrentIdx: " + currentIdx);
+        if (currentIdx === questions.length - 1) {
+            log("Final question reached. Collecting data...");
+            allAnswers.grip = document.getElementById('grip').value;
+            allAnswers.bmi = document.getElementById('bmi-val').innerText;
+            
+            log("Attempting to send data via postMessage...");
+            try {
+                window.parent.postMessage({
+                    type: 'streamlit:setComponentValue',
+                    value: allAnswers
+                }, '*');
+                log("postMessage sent successfully.");
+            } catch(e) {
+                log("CRITICAL ERROR: " + e.message);
+            }
+        } else {
+            currentIdx++; 
+            log("Moving to index: " + currentIdx);
+            load();
+        }
+    }
+</script>
