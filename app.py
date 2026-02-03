@@ -47,7 +47,7 @@ def profile():
         }
         return redirect(url_for('measure'))
 
-    y_opts = "".join([f'<option value="{y}" {"selected" if y==1955 else ""}>{y}</option>' for y in range(1930, 2011)])
+    y_opts = "".join([f'<option value="{y}" {"selected" if str(y)==1955 else ""}>{y}</option>' for y in range(1930, 2011)])
     m_opts = "".join([f'<option value="{m}">{m}</option>' for m in range(1, 13)])
     d_opts = "".join([f'<option value="{d}">{d}</option>' for d in range(1, 32)])
 
@@ -113,4 +113,14 @@ def save():
         timestamp = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
         headers = ["時刻", "氏名", "性別", "生年月日", "郵便番号", "指輪っか", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q12", "Q13", "Q14", "Q15", "握力", "身長", "体重", "BMI"]
         values = [timestamp, u.get('name'), u.get('gender'), u.get('birth'), u.get('zip'), data.get('finger'), *[data.get(f'q{i}') for i in range(1, 16)], data.get('grip'), data.get('height'), data.get('weight'), data.get('bmi')]
-        csv_row = ",".join(headers) + "\n" + ",".
+        csv_row = ",".join(headers) + "\n" + ",".join(map(str, values))
+        filename = f"測定_{u.get('name')}_{datetime.now().strftime('%m%d_%H%M')}.csv"
+        media = MediaInMemoryUpload(csv_row.encode('utf-8-sig'), mimetype='text/csv')
+        service.files().create(body={'name': filename, 'parents': [folder_id]}, media_body=media).execute()
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
