@@ -1,113 +1,171 @@
+import streamlit as st
+import streamlit.components.v1 as components
 import json
-import os
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+import urllib.parse
 from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
 
-app = Flask(__name__)
-app.secret_key = "frail_app_key"
-
-# --- 設定 ---
-CLIENT_CONFIG = {
-    "web": {
-        "client_id": "734131799600-cn8qec6q6dqh24v93bf4ubabb0gtjm5d.apps.googleusercontent.com",
-        "client_secret": "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",
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "redirect_uris": ["https://frail-system.onrender.com/callback"]
-    }
-}
+# --- 設定（RenderのURLに合わせて変更して） ---
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
+# RenderのデプロイURLをここに反映させてね
+REDIRECT_URI = "https://your-render-app-url.onrender.com/" 
 
-# --- [1] TOPページ (ログイン前) ---
-@app.route('/')
-def top():
-    if 'credentials' in session:
-        return redirect(url_for('mypage'))
-    return '''
-    <html>
-    <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;}
-    button{padding:25px 50px;font-size:1.6rem;cursor:pointer;background:#007bff;color:white;border:none;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);font-weight:bold;}</style></head>
-    <body><h1 style="font-size:2.2rem;margin-bottom:50px;">フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>
-    '''
+st.set_page_config(page_title="フレイル予防支援システム", layout="centered")
 
-# --- [2] マイページ (測定開始とログアウト) ---
-@app.route('/mypage')
-def mypage():
-    if 'credentials' not in session: return redirect(url_for('top'))
-    return '''
-    <html>
-    <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>body{display:flex;flex-direction:column;align-items:center;padding:40px 20px;margin:0;font-family:sans-serif;background:#f0f4f8;}
-    .card{background:white;padding:35px;border-radius:25px;box-shadow:0 10px 25px rgba(0,0,0,0.05);width:90%;max-width:400px;text-align:center;}
-    button{width:100%;padding:22px;font-size:1.3rem;margin:12px 0;cursor:pointer;border:none;border-radius:15px;font-weight:bold;transition:0.2s;}
-    .btn-main{background:#28a745;color:white;} .btn-sub{background:#6c757d;color:white;}
-    .btn-logout{background:transparent; color:#d9534f; border:2px solid #d9534f; margin-top:30px; padding:10px; font-size:1rem; width:auto; min-width:150px;}</style></head>
-    <body><div class="card"><h1 style="font-size:1.8rem;">🏠 マイページ</h1><p style="color:#666;margin-bottom:30px;">ようこそ！測定を始めましょう。</p>
-    <a href="/measure"><button class="btn-main">📏 測定を開始する</button></a>
-    <button class="btn-sub">📋 過去の履歴（準備中）</button>
-    <br><a href="/logout" style="text-decoration:none;"><button class="btn-logout">🔓 ログアウト</button></a></div></body></html>
-    '''
+# --- セッション状態の初期化 ---
+if 'view' not in st.session_state:
+    st.session_state.view = "login"
+if 'user_info' not in st.session_state:
+    st.session_state.user_info = {}
 
-# --- [3] 測定画面 ---
-@app.route('/measure')
-def measure():
-    if 'credentials' not in session: return redirect(url_for('top'))
-    return render_template('index.html')
+# --- Google認証ロジック ---
+def authenticate_google():
+    if 'credentials' not in st.session_state:
+        client_config = {
+            "web": {
+                "client_id": st.secrets["google_client_id"],
+                "project_id": "frail-app-project",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_secret": st.secrets["google_client_secret"],
+                "redirect_uris": [REDIRECT_URI]
+            }
+        }
+        if "code" in st.query_params:
+            flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
+            flow.fetch_token(code=st.query_params["code"])
+            st.session_state.credentials = flow.credentials
+            st.session_state.view = "profile" # 認証後はプロフィール入力へ
+            st.rerun()
+        else:
+            flow = Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
+            auth_url, _ = flow.authorization_url(prompt='consent')
+            st.link_button("Googleでログインして開始", auth_url)
+            return False
+    return True
 
-# --- [4] 保存完了画面 ---
-@app.route('/success')
-def success():
-    return '''
-    <html>
-    <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;text-align:center;}
-    button{padding:20px 40px;font-size:1.2rem;background:#007bff;color:white;border:none;border-radius:12px;font-weight:bold;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.1);}</style></head>
-    <body><h1 style="font-size:2rem;color:#28a745;">✅ 保存完了</h1><p style="font-size:1.1rem;margin-bottom:40px;">データをGoogle Driveに保存しました。</p>
-    <a href="/mypage"><button>マイページへ戻る</button></a></body></html>
-    '''
+# --- Google Drive保存ロジック (CSV/フォルダ管理) ---
+def save_data_to_drive(measurement_data):
+    creds = st.session_state.credentials
+    service = build('drive', 'v3', credentials=creds)
 
-# --- 認証 & ログアウト ---
-@app.route('/login')
-def login():
-    flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
-    flow.redirect_uri = "https://frail-system.onrender.com/callback"
-    auth_url, _ = flow.authorization_url(prompt='consent')
-    return redirect(auth_url)
+    # 1. フォルダ「fraildata」の管理
+    folder_name = "fraildata"
+    query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    folders = service.files().list(q=query, fields="files(id)").execute().get('files', [])
+    
+    if not folders:
+        folder_metadata = {'name': folder_name, 'mimeType': 'application/vnd.google-apps.folder'}
+        folder = service.files().create(body=folder_metadata, fields='id').execute()
+        folder_id = folder.get('id')
+    else:
+        folder_id = folders[0].get('id')
 
-@app.route('/callback')
-def callback():
-    flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
-    flow.redirect_uri = "https://frail-system.onrender.com/callback"
-    flow.fetch_token(code=request.args.get('code'))
-    creds = flow.credentials
-    session['credentials'] = {'token': creds.token, 'refresh_token': creds.refresh_token, 'token_uri': creds.token_uri, 'client_id': creds.client_id, 'client_secret': creds.client_secret, 'scopes': creds.scopes}
-    return redirect(url_for('mypage'))
+    # 2. データの平滑化（CSV一行分）
+    u = st.session_state.user_info
+    timestamp = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+    
+    # CSV列順: タイムスタンプ, 名前, 性別, 生年月日, 郵便番号, 指輪っか, Q1-15, 握力, 身長, 体重, BMI
+    row = [
+        timestamp,
+        u.get('name'),
+        u.get('gender'), # 1:男, 2:女
+        u.get('birth'),
+        u.get('zipcode'),
+        measurement_data.get('finger', ''),
+        *[measurement_data.get(f'q{i}', '') for i in range(1, 16)],
+        measurement_data.get('grip', ''),
+        measurement_data.get('height', ''),
+        measurement_data.get('weight', ''),
+        measurement_data.get('bmi', '')
+    ]
+    csv_content = ",".join(map(str, row)) + "\n"
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('top'))
+    # 3. ファイル保存 (個人名と日付をファイル名に)
+    filename = f"測定_{u.get('name')}_{datetime.now().strftime('%Y%m%d')}.csv"
+    media = MediaInMemoryUpload(csv_content.encode('utf-8'), mimetype='text/csv')
+    service.files().create(body={'name': filename, 'parents': [folder_id]}, media_body=media).execute()
 
-@app.route('/save', methods=['POST'])
-def save():
-    if 'credentials' not in session: return jsonify({"status": "error"}), 401
+# --- メインロジック ---
+if not authenticate_google():
+    st.stop()
+
+# --- 1. プロフィール入力 & 同意画面 ---
+if st.session_state.view == "profile":
+    st.title("📋 基本情報の登録")
+    st.write("測定を始める前に、あなたの情報を教えてください。")
+    
+    with st.form("profile_form"):
+        name = st.text_input("お名前")
+        gender = st.radio("性別", ["男性", "女性"], horizontal=True)
+        birth = st.date_input("生年月日", min_value=datetime(1920, 1, 1))
+        zipcode = st.text_input("郵便番号 (例: 123-4567)")
+        
+        st.markdown("---")
+        st.subheader("📝 同意事項")
+        st.info("入力されたデータは、フレイル予防の研究および自治体による健康支援、アドバイスの提供に利用されます。")
+        agree_sys = st.checkbox("システム提供者へのデータ提供に同意する")
+        agree_gov = st.checkbox("お住まいの自治体へのデータ提供に同意する")
+        
+        submit = st.form_submit_button("測定画面へ進む")
+        
+        if submit:
+            if not (name and zipcode):
+                st.error("お名前と郵便番号を入力してください。")
+            elif not (agree_sys and agree_gov):
+                st.error("全ての同意事項にチェックを入れてください。")
+            else:
+                st.session_state.user_info = {
+                    "name": name,
+                    "gender": "1" if gender == "男性" else "2",
+                    "birth": str(birth),
+                    "zipcode": zipcode
+                }
+                st.session_state.view = "measure"
+                st.rerun()
+
+# --- 2. 測定画面（index.htmlの呼び出し） ---
+elif st.session_state.view == "measure":
+    # 測定終了後のデータ受け取り
+    if "data" in st.query_params:
+        try:
+            raw_data = st.query_params["data"]
+            measurement_data = json.loads(urllib.parse.unquote(raw_data))
+            if measurement_data.get("is_done"):
+                save_data_to_drive(measurement_data)
+                st.session_state.view = "complete"
+                st.rerun()
+        except Exception as e:
+            st.error(f"データ保存エラー: {e}")
+
+    # 性別をクエリパラメータとしてHTMLに渡す
+    g_param = st.session_state.user_info.get('gender', '1')
+    
+    st.markdown("""
+        <style>
+            [data-testid="stHeader"], header, footer { display: none !important; }
+            .main .block-container { padding: 0 !important; margin: 0 !important; }
+            iframe { position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; border: none !important; }
+        </style>
+    """, unsafe_allow_html=True)
+    
     try:
-        data = request.json
-        creds = Credentials(**session['credentials'])
-        service = build('drive', 'v3', credentials=creds)
-        filename = f"frail_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        csv_body = "item,value\n" + "\n".join([f"{k},{v}" for k, v in data.items()])
-        media = MediaInMemoryUpload(csv_body.encode('utf-8-sig'), mimetype='text/csv')
-        service.files().create(body={'name': filename}, media_body=media).execute()
-        return jsonify({"status": "success"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        with open("index.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        # index.html内でこの性別を参照して判定閾値を変える
+        components.html(html_content, height=2000) # 十分な高さを確保
+    except FileNotFoundError:
+        st.error("index.htmlが見つかりません。")
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+# --- 3. 完了画面 ---
+elif st.session_state.view == "complete":
+    st.balloons()
+    st.title("✅ 測定完了")
+    st.success(f"{st.session_state.user_info['name']}さんの測定データをGoogle Driveの「fraildata」フォルダに保存しました。")
+    st.write("自治体のトレーナーからのアドバイスをお待ちください。")
+    if st.button("トップに戻る"):
+        st.session_state.view = "profile"
+        st.rerun()
