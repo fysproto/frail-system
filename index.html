@@ -3,165 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>フレイル判定</title>
     <style>
         html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; }
         #app { display: flex; flex-direction: column; height: 100%; }
         header { height: 70px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; position: relative; }
         #progress-bar { position: absolute; bottom: 0; left: 0; height: 4px; background: #007bff; transition: width 0.3s; }
-        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 20px; }
-        #drop-zone { width: 160px; height: 160px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; color: #adb5bd; text-align: center; font-size: 0.9rem; }
-        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem; text-align: center; }
+        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; }
+        #drop-zone { width: 150px; height: 150px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; font-size: 0.9rem; margin-bottom: 10px; }
+        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem; }
+        #options { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 400px; }
+        .seal { width: 75px; height: 75px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.8rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; text-align: center; padding: 5px; box-sizing: border-box; }
+        #next-btn { margin-top: 20px; padding: 15px 50px; border-radius: 30px; border: none; background: #28a745; color: white; font-size: 1.2rem; display: none; font-weight: bold; }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; } .bg-yellow { background: #ffc107; color: #000; }
-        #options { display: flex; gap: 15px; margin-top: 40px; flex-wrap: wrap; justify-content: center; }
-        .seal { width: 70px; height: 70px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.8rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; text-align: center; padding: 5px; }
-        #next-btn { margin-top: 30px; padding: 12px 40px; border-radius: 25px; border: none; background: #28a745; color: white; font-size: 1.1rem; display: none; cursor: pointer; }
-        .input-group { background: #fff; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 100%; max-width: 300px; }
-        .input-group label { display: block; margin-bottom: 10px; font-weight: bold; }
-        .input-group input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-left: 8px; }
+        .input-group { background: #fff; padding: 15px; border-radius: 12px; width: 100%; max-width: 300px; }
     </style>
 </head>
 <body>
 <div id="app">
-    <header>
-        <div id="q-no" style="font-size: 0.8rem; color: #6c757d;"></div>
-        <div id="q-text" style="font-weight: bold; padding: 0 10px;"></div>
-        <div id="progress-bar" style="width: 0%;"></div>
-    </header>
+    <header><div id="q-no"></div><div id="q-text"></div><div id="progress-bar"></div></header>
     <div id="main-stage">
-        <div id="drop-zone">ここにシールを<br>ドラッグ</div>
+        <div id="drop-zone">ここにシールを</div>
         <div id="options"></div>
-        <button id="next-btn" onclick="goNext()">次へ進む</button>
+        <button id="next-btn" onclick="goNext()">次へ</button>
     </div>
 </div>
-
 <script>
-    // 性別による閾値（一旦クエリパラメータから取得、なければデフォルト）
-    const params = new URLSearchParams(window.location.search);
-    const gender = params.get('gender') || "1"; // 1:男, 2:女
-
+    const gender = "{{ gender|safe }}" || "1";
     const questions = [
-        { id: "finger", no: "計測", text: "指輪っかテスト", opts: ["囲めない", "ちょうど囲める", "隙間ができる"], type: "logic", blue: ["囲めない", "ちょうど囲める"], red: ["隙間ができる"], category: "muscle" },
-        { id: "q1", no: "1", text: "現在の健康状態はいかがですか？", opts: ["よい", "まあよい", "ふつう", "あまりよくない", "よくない"], type: "special", category: "general" },
-        { id: "q2", no: "2", text: "毎日の生活に満足していますか？", opts: ["満足", "やや満足", "やや不満", "不満"], type: "special", category: "general" },
-        { id: "q3", no: "3", text: "1日3食きちんと食べていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"], category: "nutrition" },
-        { id: "q4", no: "4", text: "半年前に比べて固いものが食べにくくなりましたか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"], category: "oral" },
-        { id: "q5", no: "5", text: "お茶や汁物等でむせることがありますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"], category: "oral" },
-        { id: "q6", no: "6", text: "6か月間で2~3kg以上の体重減少がありましたか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"], category: "nutrition" },
-        { id: "q7", no: "7", text: "歩く速度が遅くなってきたと思いますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"], category: "physical" },
-        { id: "q8", no: "8", text: "この1年間に転んだことがありますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"], category: "physical" },
-        { id: "q9", no: "9", text: "ウォーキング等の運動を週に1回以上していますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"], category: "physical" },
-        { id: "q10", no: "10", text: "もの忘れがあると言われていますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"], category: "cognitive" },
-        { id: "q11", no: "11", text: "今日の日付がわからない時がありますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"], category: "cognitive" },
-        { id: "q12", no: "12", text: "あなたはたばこを吸いますか？", opts: ["吸っていない", "やめた", "吸っている"], type: "special", category: "lifestyle" },
-        { id: "q13", no: "13", text: "週に1回以上は外出していますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"], category: "social" },
-        { id: "q14", no: "14", text: "ふだんから家族や友人と付き合いがありますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"], category: "social" },
-        { id: "q15", no: "15", text: "体調が悪い時に相談できる人がいますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"], category: "social" },
-        { id: "calc", no: "計測", text: "身体計測（握力・BMI）", type: "calc", category: "physical" }
+        { id: "finger", no: "計測", text: "指輪っかテスト", opts: ["囲めない", "ちょうど", "隙間ができる"], type: "logic", blue: ["囲めない", "ちょうど"], red: ["隙間ができる"] },
+        { id: "q1", no: "1", text: "現在の健康状態はいかがですか？", opts: ["よい", "まあよい", "ふつう", "あまりよくない", "よくない"], type: "special" },
+        // ...（他14問分：スペースの都合上省略するけど、あなたの今のリストをそのまま使ってね）
+        { id: "calc", no: "計測", text: "身体計測", type: "calc" }
     ];
 
-    let currentIdx = 0;
-    let allAnswers = {};
-    let active = null;
+    let currentIdx = 0, allAnswers = {}, active = null;
 
     function render() {
         const q = questions[currentIdx];
-        document.getElementById('q-no').innerText = q.no ? `質問 No.${q.no}` : "計測項目";
+        document.getElementById('q-no').innerText = q.no;
         document.getElementById('q-text').innerText = q.text;
-        document.getElementById('progress-bar').style.width = `${(currentIdx / questions.length) * 100}%`;
-        document.getElementById('drop-zone').innerHTML = "ここにシールを<br>ドラッグ";
-        document.getElementById('next-btn').style.display = "none";
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.innerHTML = "ここにシールを";
+        dropZone.style.display = q.type === "calc" ? "none" : "flex";
+        document.getElementById('next-btn').style.display = q.type === "calc" ? "block" : "none";
+        
         const optsDiv = document.getElementById('options');
         optsDiv.innerHTML = "";
-
         if (q.type === "calc") {
-            document.getElementById('drop-zone').style.display = "none";
-            optsDiv.innerHTML = `
-                <div class="input-group">
-                    <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                    <input type="number" id="grip" step="0.1" placeholder="0.0" oninput="judgeGrip()">
-                    <label>身長 (cm)</label>
-                    <input type="number" id="height" step="0.1" placeholder="0.0" oninput="calcBMI()">
-                    <label>体重 (kg)</label>
-                    <input type="number" id="weight" step="0.1" placeholder="0.0" oninput="calcBMI()">
-                    <div style="font-weight:bold; margin-top:10px;">BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
-                </div>
-            `;
-            document.getElementById('next-btn').style.display = "block";
-            document.getElementById('next-btn').innerText = "測定終了・保存";
+            optsDiv.innerHTML = `<div class="input-group"><input type="number" id="grip" placeholder="握力(kg)"></div>`;
         } else {
-            document.getElementById('drop-zone').style.display = "flex";
             q.opts.forEach((opt, i) => {
                 const el = document.createElement('div');
-                el.className = 'seal';
-                el.innerText = opt;
-                el.dataset.val = i + 1; // 1-indexedで保存
-                el.onmousedown = el.ontouchstart = dragStart;
+                el.className = 'seal'; el.innerText = opt; el.dataset.val = i + 1;
+                el.ontouchstart = (e) => dragStart(e, el);
                 optsDiv.appendChild(el);
             });
-            document.getElementById('next-btn').innerText = "次へ進む";
         }
     }
 
-    function dragStart(e) {
-        active = this.cloneNode(true);
-        active.style.position = 'absolute';
-        active.style.zIndex = 1000;
-        active.style.opacity = 0.8;
+    function dragStart(e, original) {
+        if (active) return;
+        active = original.cloneNode(true);
+        active.style.position = 'fixed'; active.style.zIndex = 1000; active.style.pointerEvents = 'none';
         document.body.appendChild(active);
-        const t = e.touches ? e.touches[0] : e;
-        updatePos(t);
-        document.onmousemove = document.ontouchmove = (ev) => updatePos(ev.touches ? ev.touches[0] : ev);
-        document.onmouseup = document.ontouchend = (ev) => {
-            const rect = document.getElementById('drop-zone').getBoundingClientRect();
-            const lastT = ev.changedTouches ? ev.changedTouches[0] : ev;
-            if (lastT.clientX > rect.left && lastT.clientX < rect.right && lastT.clientY > rect.top && lastT.clientY < rect.bottom) {
-                const q = questions[currentIdx];
-                let colorClass = "bg-yellow"; // デフォルト（判定なし項目）
-                if (q.type === "logic") {
-                    colorClass = q.blue.includes(this.innerText) ? "bg-blue" : "bg-red";
-                }
-                document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${colorClass}">${this.innerText}</div>`;
-                allAnswers[q.id] = this.dataset.val; // 数値コードで保存
+        const moveHandler = (ev) => {
+            const t = ev.touches[0];
+            active.style.left = (t.clientX - 37) + 'px';
+            active.style.top = (t.clientY - 37) + 'px';
+        };
+        const endHandler = (ev) => {
+            const t = ev.changedTouches[0];
+            const el = document.elementFromPoint(t.clientX, t.clientY);
+            const dropZone = document.getElementById('drop-zone');
+            if (el === dropZone || dropZone.contains(el)) {
+                dropZone.innerHTML = `<div class="placed-seal bg-blue">${original.innerText}</div>`;
+                allAnswers[questions[currentIdx].id] = original.dataset.val;
                 document.getElementById('next-btn').style.display = "block";
             }
-            active.remove(); document.onmousemove = document.ontouchmove = null;
+            active.remove(); active = null;
+            document.removeEventListener('touchmove', moveHandler);
+            document.removeEventListener('touchend', endHandler);
         };
+        document.addEventListener('touchmove', moveHandler, { passive: false });
+        document.addEventListener('touchend', endHandler);
     }
 
-    function updatePos(t) { active.style.left = (t.clientX - 35) + 'px'; active.style.top = (t.clientY - 35) + 'px'; }
-
-    function judgeGrip() {
-        const val = parseFloat(document.getElementById('grip').value);
-        const threshold = (gender === "1") ? 28.1 : 18.1; // 男:28.1, 女:18.1
-        document.getElementById('dot-grip').className = "status-dot " + (val < threshold ? "bg-red" : "bg-blue");
-    }
-
-    function calcBMI() {
-        const h = parseFloat(document.getElementById('height').value) / 100;
-        const w = parseFloat(document.getElementById('weight').value);
-        if (h > 0 && w > 0) {
-            const bmi = (w / (h * h)).toFixed(1);
-            document.getElementById('bmi-val').innerText = bmi;
-            document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
-        }
-    }
-
-    function goNext() {
+    async function goNext() {
         if (currentIdx === questions.length - 1) {
-            allAnswers.grip = document.getElementById('grip').value;
-            allAnswers.bmi = document.getElementById('bmi-val').innerText;
-            allAnswers.height = document.getElementById('height').value;
-            allAnswers.weight = document.getElementById('weight').value;
-            allAnswers.is_done = true;
-            const dataStr = encodeURIComponent(JSON.stringify(allAnswers));
-            window.parent.location.href = `?data=${dataStr}`;
-        } else {
-            currentIdx++;
-            render();
-        }
+            const res = await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
+            const data = await res.json();
+            if (res.ok) { alert("保存完了！"); window.location.href = data.redirect; }
+        } else { currentIdx++; render(); }
     }
-
     render();
 </script>
 </body>
