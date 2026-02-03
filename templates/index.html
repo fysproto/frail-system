@@ -114,21 +114,30 @@
         const t = e.touches ? e.touches[0] : e;
         updatePos(t);
         document.onmousemove = document.ontouchmove = (ev) => updatePos(ev.touches ? ev.touches[0] : ev);
-        document.onmouseup = document.ontouchend = (ev) => {
-            const rect = document.getElementById('drop-zone').getBoundingClientRect();
-            const lastT = ev.changedTouches ? ev.changedTouches[0] : ev;
-            if (lastT.clientX > rect.left && lastT.clientX < rect.right && lastT.clientY > rect.top && lastT.clientY < rect.bottom) {
-                const q = questions[currentIdx];
-                let colorClass = "bg-yellow";
-                if (q.type === "logic") {
-                    colorClass = q.blue.includes(this.innerText) ? "bg-blue" : "bg-red";
-                }
-                document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${colorClass}">${this.innerText}</div>`;
-                allAnswers[q.id] = this.dataset.val;
-                document.getElementById('next-btn').style.display = "block";
-            }
-            active.remove(); document.onmousemove = document.ontouchmove = null;
-        };
+	document.onmouseup = document.ontouchend = (ev) => {
+    		const rect = document.getElementById('drop-zone').getBoundingClientRect();
+    		const lastT = ev.changedTouches ? ev.changedTouches[0] : ev;
+    
+    		if (lastT.clientX > rect.left && lastT.clientX < rect.right && 
+       		    lastT.clientY > rect.top && lastT.clientY < rect.bottom) {
+        
+        	    const q = questions[currentIdx];
+        	    let colorClass = "bg-yellow"; // デフォルト
+        
+        	    if (q.type === "logic") {
+            	    colorClass = q.blue.includes(this.innerText) ? "bg-blue" : "bg-red";
+        	    }
+       		    // specialタイプ（判定なし）でも yellow で表示される
+        
+        	    document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${colorClass}">${this.innerText}</div>`;
+        	    allAnswers[q.id] = this.dataset.val;
+        
+        	    // ★重要：ここを判定の外に出すことで、どの設問でもボタンが出るようにする
+        	    document.getElementById('next-btn').style.display = "block";
+    	    }
+    	    if (active) active.remove(); 
+    	    document.onmousemove = document.ontouchmove = null;
+	    };    
     }
 
     function updatePos(t) { active.style.left = (t.clientX - 37) + 'px'; active.style.top = (t.clientY - 37) + 'px'; }
