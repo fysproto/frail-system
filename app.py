@@ -35,37 +35,46 @@ def top():
     <body><h1 style="font-size:2.2rem;margin-bottom:50px;">フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>
     '''
 
-# --- [2] プロフィール・同意入力画面 ---
+# --- [2] プロフィール・同意入力画面 (app.py内) ---
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     if 'credentials' not in session: return redirect(url_for('top'))
     
     if request.method == 'POST':
-        # 入力データをセッションに保存
         session['user_info'] = {
             "name": request.form.get('name'),
-            "gender": request.form.get('gender'), # "1":男, "2":女
+            "gender": request.form.get('gender'),
             "birth": request.form.get('birth'),
             "zip": request.form.get('zip')
         }
         return redirect(url_for('measure'))
 
-    return '''
+    # 1955年1月1日（約70歳）をデフォルトに設定
+    default_birth = "1955-01-01"
+
+    return f'''
     <html>
-    <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>body{padding:20px;font-family:sans-serif;background:#f0f4f8;}
-    .card{background:white;padding:25px;border-radius:15px;max-width:400px;margin:auto;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
-    input, select{width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;}
-    button{width:100%;padding:15px;background:#28a745;color:white;border:none;border-radius:8px;font-size:1.1rem;font-weight:bold;cursor:pointer;}
-    .consent{font-size:0.85rem;color:#666;margin:15px 0;border-top:1px solid #eee;padding-top:15px;}</style></head>
+    <head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <style>
+        body{{padding:15px; font-family:sans-serif; background:#f0f4f8; margin:0; box-sizing:border-box; overflow-x:hidden;}}
+        .card{{background:white; padding:20px; border-radius:15px; width:100%; max-width:400px; margin:auto; box-shadow:0 4px 10px rgba(0,0,0,0.05); box-sizing:border-box;}}
+        input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:16px;}} /* font-size:16pxでiPhoneのズームを防ぐ */
+        button{{width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; font-size:1.1rem; font-weight:bold; cursor:pointer; margin-top:10px;}}
+        .consent{{font-size:0.85rem; color:#666; margin:15px 0; border-top:1px solid #eee; padding-top:15px; line-height:1.5;}}
+        .consent input{{width:auto; margin-right:8px;}}
+    </style></head>
     <body><div class="card"><h2>📋 基本情報の入力</h2>
     <form method="POST">
-        <input type="text" name="name" placeholder="お名前" required>
-        <select name="gender" required><option value="">性別を選択</option><option value="1">男性</option><option value="2">女性</option></select>
-        <input type="date" name="birth" required>
-        <input type="text" name="zip" placeholder="郵便番号 (例: 123-4567)" required>
+        <label style="font-size:0.8rem; color:#666;">お名前</label>
+        <input type="text" name="name" placeholder="例：山田 太郎" required>
+        <label style="font-size:0.8rem; color:#666;">性別</label>
+        <select name="gender" required><option value="">選択してください</option><option value="1">男性</option><option value="2">女性</option></select>
+        <label style="font-size:0.8rem; color:#666;">生年月日</label>
+        <input type="date" name="birth" value="{default_birth}" required>
+        <label style="font-size:0.8rem; color:#666;">郵便番号</label>
+        <input type="text" name="zip" placeholder="123-4567" required>
         <div class="consent">
-            <input type="checkbox" required> 自治体および運営へのデータ提供に同意します
+            <label><input type="checkbox" required> 自治体および運営へのデータ提供に同意します</label>
         </div>
         <button type="submit">測定を開始する</button>
     </form></div></body></html>
