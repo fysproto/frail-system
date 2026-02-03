@@ -37,9 +37,7 @@
 </div>
 
 <script>
-    // Flaskから渡される値を安全に受け取る。万が一空でもエラーにならないように
-    const gender = "{{ gender|safe }}" || "1"; 
-   // デバッグ用：これでコンソールに性別が出れば成功
+    const gender = "{{ gender|safe }}" || "1";
     console.log("Current Gender:", gender);
 
     const questions = [
@@ -106,45 +104,52 @@
     }
 
     function dragStart(e) {
+        if (active) return;
         active = this.cloneNode(true);
         active.style.position = 'absolute';
         active.style.zIndex = 1000;
         active.style.opacity = 0.8;
+        active.style.pointerEvents = 'none'; // 重なりによるドロップ阻害を防止
         document.body.appendChild(active);
         const t = e.touches ? e.touches[0] : e;
         updatePos(t);
-        document.onmousemove = document.ontouchmove = (ev) => updatePos(ev.touches ? ev.touches[0] : ev);
-	document.onmouseup = document.ontouchend = (ev) => {
-    		const rect = document.getElementById('drop-zone').getBoundingClientRect();
-    		const lastT = ev.changedTouches ? ev.changedTouches[0] : ev;
-    
-    		if (lastT.clientX > rect.left && lastT.clientX < rect.right && 
-       		    lastT.clientY > rect.top && lastT.clientY < rect.bottom) {
         
-        	    const q = questions[currentIdx];
-        	    let colorClass = "bg-yellow"; // デフォルト
-        
-        	    if (q.type === "logic") {
-            	    colorClass = q.blue.includes(this.innerText) ? "bg-blue" : "bg-red";
-        	    }
-       		    // specialタイプ（判定なし）でも yellow で表示される
-        
-        	    document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${colorClass}">${this.innerText}</div>`;
-        	    allAnswers[q.id] = this.dataset.val;
-        
-        	    // ★重要：ここを判定の外に出すことで、どの設問でもボタンが出るようにする
-        	    document.getElementById('next-btn').style.display = "block";
-    	    }
-    	    if (active) active.remove(); 
-    	    document.onmousemove = document.ontouchmove = null;
-	    };    
+        const moveHandler = (ev) => updatePos(ev.touches ? ev.touches[0] : ev);
+        const endHandler = (ev) => {
+            const rect = document.getElementById('drop-zone').getBoundingClientRect();
+            const lastT = ev.changedTouches ? ev.changedTouches[0] : ev;
+            
+            if (lastT.clientX > rect.left && lastT.clientX < rect.right && lastT.clientY > rect.top && lastT.clientY < rect.bottom) {
+                const q = questions[currentIdx];
+                let colorClass = "bg-yellow";
+                if (q.type === "logic") {
+                    colorClass = q.blue.includes(this.innerText) ? "bg-blue" : "bg-red";
+                }
+                document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${colorClass}">${this.innerText}</div>`;
+                allAnswers[q.id] = this.dataset.val;
+                document.getElementById('next-btn').style.display = "block";
+            }
+            if (active) { active.remove(); active = null; }
+            document.removeEventListener('mousemove', moveHandler);
+            document.removeEventListener('touchmove', moveHandler);
+            document.removeEventListener('mouseup', endHandler);
+            document.removeEventListener('touchend', endHandler);
+        };
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('touchmove', moveHandler, { passive: false });
+        document.addEventListener('mouseup', endHandler);
+        document.addEventListener('touchend', endHandler);
     }
 
-    function updatePos(t) { active.style.left = (t.clientX - 37) + 'px'; active.style.top = (t.clientY - 37) + 'px'; }
+    function updatePos(t) { 
+        if (!active) return;
+        active.style.left = (t.clientX - 37) + 'px'; 
+        active.style.top = (t.clientY - 37) + 'px'; 
+    }
 
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
-        const threshold = (gender === "1") ? 28.1 : 18.1; 
+        const threshold = (gender === "1") ? 28.1 : 18.1;
         document.getElementById('dot-grip').className = "status-dot " + (val < threshold ? "bg-red" : "bg-blue");
     }
 
@@ -164,16 +169,13 @@
             allAnswers.height = document.getElementById('height').value;
             allAnswers.weight = document.getElementById('weight').value;
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
-
-            // Flask APIにデータを送信
             const response = await fetch('/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(allAnswers)
             });
-
             if (response.ok) {
-                alert("保存が完了しました！マイページに戻ります。");
+                alert("保存が完了しました！");
                 window.location.href = "/";
             } else {
                 alert("エラーが発生しました。");
@@ -183,7 +185,6 @@
             render();
         }
     }
-
     render();
 </script>
 </body>
