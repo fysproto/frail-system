@@ -10,7 +10,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "frail_app_key_2024"
 
-# --- 設定 ---
+# --- Google OAuth 設定 ---
 CLIENT_CONFIG = {
     "web": {
         "client_id": "734131799600-cn8qec6q6dqh24v93bf4ubabb0gtjm5d.apps.googleusercontent.com",
@@ -47,7 +47,8 @@ def profile():
         }
         return redirect(url_for('measure'))
 
-    y_opts = "".join([f'<option value="{y}" {"selected" if str(y)==1955 else ""}>{y}</option>' for y in range(1930, 2011)])
+    # セレクトボックスの選択肢生成
+    y_opts = "".join([f'<option value="{y}" {"selected" if y==1955 else ""}>{y}</option>' for y in range(1930, 2011)])
     m_opts = "".join([f'<option value="{m}">{m}</option>' for m in range(1, 13)])
     d_opts = "".join([f'<option value="{d}">{d}</option>' for d in range(1, 32)])
 
@@ -104,15 +105,17 @@ def save():
         u = session.get('user_info', {})
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
+        
         folder_id = None
-        q = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
-        folders = service.files().list(q=q).execute().get('files', [])
+        q_folder = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+        folders = service.files().list(q=q_folder).execute().get('files', [])
         if folders: folder_id = folders[0]['id']
         else: folder_id = service.files().create(body={'name': 'fraildata', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
         
         timestamp = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
         headers = ["時刻", "氏名", "性別", "生年月日", "郵便番号", "指輪っか", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q12", "Q13", "Q14", "Q15", "握力", "身長", "体重", "BMI"]
         values = [timestamp, u.get('name'), u.get('gender'), u.get('birth'), u.get('zip'), data.get('finger'), *[data.get(f'q{i}') for i in range(1, 16)], data.get('grip'), data.get('height'), data.get('weight'), data.get('bmi')]
+        
         csv_row = ",".join(headers) + "\n" + ",".join(map(str, values))
         filename = f"測定_{u.get('name')}_{datetime.now().strftime('%m%d_%H%M')}.csv"
         media = MediaInMemoryUpload(csv_row.encode('utf-8-sig'), mimetype='text/csv')
