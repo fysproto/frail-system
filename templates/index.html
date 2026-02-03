@@ -37,11 +37,145 @@
 </div>
 
 <script>
-    // Flaskから渡される性別 (1:男, 2:女)
-    const gender = "{{ gender }}"; 
+    // Flaskから渡される値を安全に受け取る。万が一空でもエラーにならないように
+    const gender = "{{ gender|safe }}" || "1"; 
+   // デバッグ用：これでコンソールに性別が出れば成功
+    console.log("Current Gender:", gender);
 
     const questions = [
         { id: "finger", no: "計測", text: "指輪っかテスト", opts: ["囲めない", "ちょうど", "隙間ができる"], type: "logic", blue: ["囲めない", "ちょうど"], red: ["隙間ができる"] },
         { id: "q1", no: "1", text: "現在の健康状態はいかがですか？", opts: ["よい", "まあよい", "ふつう", "あまりよくない", "よくない"], type: "special" },
         { id: "q2", no: "2", text: "毎日の生活に満足していますか？", opts: ["満足", "やや満足", "やや不満", "不満"], type: "special" },
-        { id: "q3", no: "3", text: "1日3食きちんと食べていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ
+        { id: "q3", no: "3", text: "1日3食きちんと食べていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "q4", no: "4", text: "固いものが食べにくくなりましたか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q5", no: "5", text: "お茶や汁物でむせることがありますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q6", no: "6", text: "半年で2~3kg以上の体重減少がありましたか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q7", no: "7", text: "歩く速度が遅くなってきたと思いますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q8", no: "8", text: "この1年間に転んだことがありますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q9", no: "9", text: "週1回以上の運動をしていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "q10", no: "10", text: "もの忘れがあると言われていますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q11", no: "11", text: "今日の日付がわからない時がありますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q12", no: "12", text: "あなたはたばこを吸いますか？", opts: ["吸わない", "やめた", "吸っている"], type: "special" },
+        { id: "q13", no: "13", text: "週に1回以上は外出していますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "q14", no: "14", text: "家族や友人と付き合いがありますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "q15", no: "15", text: "体調が悪い時に相談できる人がいますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "calc", no: "計測", text: "身体計測（握力・BMI）", type: "calc" }
+    ];
+
+    let currentIdx = 0;
+    let allAnswers = {};
+    let active = null;
+
+    function render() {
+        const q = questions[currentIdx];
+        document.getElementById('q-no').innerText = q.no ? `質問 ${q.no} / 15` : "計測項目";
+        document.getElementById('q-text').innerText = q.text;
+        document.getElementById('progress-bar').style.width = `${(currentIdx / questions.length) * 100}%`;
+        document.getElementById('drop-zone').innerHTML = "ここにシールを<br>ドラッグ";
+        document.getElementById('next-btn').style.display = "none";
+        const optsDiv = document.getElementById('options');
+        optsDiv.innerHTML = "";
+
+        if (q.type === "calc") {
+            document.getElementById('drop-zone').style.display = "none";
+            optsDiv.innerHTML = `
+                <div class="input-group">
+                    <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
+                    <input type="number" id="grip" step="0.1" placeholder="0.0" oninput="judgeGrip()">
+                    <label>身長 (cm)</label>
+                    <input type="number" id="height" step="0.1" placeholder="160.0" oninput="calcBMI()">
+                    <label>体重 (kg)</label>
+                    <input type="number" id="weight" step="0.1" placeholder="60.0" oninput="calcBMI()">
+                    <div style="font-weight:bold; margin-top:10px;">BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
+                </div>
+            `;
+            document.getElementById('next-btn').style.display = "block";
+            document.getElementById('next-btn').innerText = "測定終了・保存";
+        } else {
+            document.getElementById('drop-zone').style.display = "flex";
+            q.opts.forEach((opt, i) => {
+                const el = document.createElement('div');
+                el.className = 'seal';
+                el.innerText = opt;
+                el.dataset.val = i + 1;
+                el.onmousedown = el.ontouchstart = dragStart;
+                optsDiv.appendChild(el);
+            });
+            document.getElementById('next-btn').innerText = "次へ";
+        }
+    }
+
+    function dragStart(e) {
+        active = this.cloneNode(true);
+        active.style.position = 'absolute';
+        active.style.zIndex = 1000;
+        active.style.opacity = 0.8;
+        document.body.appendChild(active);
+        const t = e.touches ? e.touches[0] : e;
+        updatePos(t);
+        document.onmousemove = document.ontouchmove = (ev) => updatePos(ev.touches ? ev.touches[0] : ev);
+        document.onmouseup = document.ontouchend = (ev) => {
+            const rect = document.getElementById('drop-zone').getBoundingClientRect();
+            const lastT = ev.changedTouches ? ev.changedTouches[0] : ev;
+            if (lastT.clientX > rect.left && lastT.clientX < rect.right && lastT.clientY > rect.top && lastT.clientY < rect.bottom) {
+                const q = questions[currentIdx];
+                let colorClass = "bg-yellow";
+                if (q.type === "logic") {
+                    colorClass = q.blue.includes(this.innerText) ? "bg-blue" : "bg-red";
+                }
+                document.getElementById('drop-zone').innerHTML = `<div class="placed-seal ${colorClass}">${this.innerText}</div>`;
+                allAnswers[q.id] = this.dataset.val;
+                document.getElementById('next-btn').style.display = "block";
+            }
+            active.remove(); document.onmousemove = document.ontouchmove = null;
+        };
+    }
+
+    function updatePos(t) { active.style.left = (t.clientX - 37) + 'px'; active.style.top = (t.clientY - 37) + 'px'; }
+
+    function judgeGrip() {
+        const val = parseFloat(document.getElementById('grip').value);
+        const threshold = (gender === "1") ? 28.1 : 18.1; 
+        document.getElementById('dot-grip').className = "status-dot " + (val < threshold ? "bg-red" : "bg-blue");
+    }
+
+    function calcBMI() {
+        const h = parseFloat(document.getElementById('height').value) / 100;
+        const w = parseFloat(document.getElementById('weight').value);
+        if (h > 0 && w > 0) {
+            const bmi = (w / (h * h)).toFixed(1);
+            document.getElementById('bmi-val').innerText = bmi;
+            document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue");
+        }
+    }
+
+    async function goNext() {
+        if (currentIdx === questions.length - 1) {
+            allAnswers.grip = document.getElementById('grip').value;
+            allAnswers.height = document.getElementById('height').value;
+            allAnswers.weight = document.getElementById('weight').value;
+            allAnswers.bmi = document.getElementById('bmi-val').innerText;
+
+            // Flask APIにデータを送信
+            const response = await fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(allAnswers)
+            });
+
+            if (response.ok) {
+                alert("保存が完了しました！マイページに戻ります。");
+                window.location.href = "/";
+            } else {
+                alert("エラーが発生しました。");
+            }
+        } else {
+            currentIdx++;
+            render();
+        }
+    }
+
+    render();
+</script>
+</body>
+</html>
