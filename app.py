@@ -8,9 +8,9 @@ from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "frail_app_key_secret" # 本番ではランダムな文字列を推奨
+app.secret_key = "frail_app_key_2024"
 
-# --- 設定 (RenderのURLに合わせて) ---
+# --- 設定 ---
 CLIENT_CONFIG = {
     "web": {
         "client_id": "734131799600-cn8qec6q6dqh24v93bf4ubabb0gtjm5d.apps.googleusercontent.com",
@@ -22,7 +22,6 @@ CLIENT_CONFIG = {
 }
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-# --- [1] TOPページ ---
 @app.route('/')
 def top():
     if 'credentials' in session:
@@ -35,22 +34,22 @@ def top():
     <body><h1 style="font-size:2.2rem;margin-bottom:50px;">フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>
     '''
 
-# --- [2] プロフィール・同意入力画面 (app.py内) ---
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     if 'credentials' not in session: return redirect(url_for('top'))
-    
     if request.method == 'POST':
+        birth = f"{request.form.get('birth_y')}-{request.form.get('birth_m')}-{request.form.get('birth_d')}"
         session['user_info'] = {
             "name": request.form.get('name'),
             "gender": request.form.get('gender'),
-            "birth": request.form.get('birth'),
+            "birth": birth,
             "zip": request.form.get('zip')
         }
         return redirect(url_for('measure'))
 
-    # 1955年1月1日（約70歳）をデフォルトに設定
-    default_birth = "1955-01-01"
+    y_opts = "".join([f'<option value="{y}" {"selected" if y==1955 else ""}>{y}</option>' for y in range(1930, 2011)])
+    m_opts = "".join([f'<option value="{m}">{m}</option>' for m in range(1, 13)])
+    d_opts = "".join([f'<option value="{d}">{d}</option>' for d in range(1, 32)])
 
     return f'''
     <html>
@@ -58,42 +57,29 @@ def profile():
     <style>
         body{{padding:15px; font-family:sans-serif; background:#f0f4f8; margin:0; box-sizing:border-box; overflow-x:hidden;}}
         .card{{background:white; padding:20px; border-radius:15px; width:100%; max-width:400px; margin:auto; box-shadow:0 4px 10px rgba(0,0,0,0.05); box-sizing:border-box;}}
-        input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:16px;}} /* font-size:16pxでiPhoneのズームを防ぐ */
-        button{{width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; font-size:1.1rem; font-weight:bold; cursor:pointer; margin-top:10px;}}
-        .consent{{font-size:0.85rem; color:#666; margin:15px 0; border-top:1px solid #eee; padding-top:15px; line-height:1.5;}}
-        .consent input{{width:auto; margin-right:8px;}}
+        input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:16px; background:white;}}
+        .date-group{{display:flex; gap:5px; align-items:center; margin:10px 0;}}
+        .date-group select{{flex:1; margin:0;}}
+        button{{width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; font-size:1.1rem; font-weight:bold; cursor:pointer; margin-top:20px;}}
     </style></head>
     <body><div class="card"><h2>📋 基本情報の入力</h2>
     <form method="POST">
-        <label style="font-size:0.8rem; color:#666;">お名前</label>
-        <input type="text" name="name" placeholder="例：山田 太郎" required>
+        <label style="font-size:0.8rem; color:#666;">お名前</label><input type="text" name="name" required>
         <label style="font-size:0.8rem; color:#666;">性別</label>
         <select name="gender" required><option value="">選択してください</option><option value="1">男性</option><option value="2">女性</option></select>
         <label style="font-size:0.8rem; color:#666;">生年月日</label>
-        <input type="date" name="birth" value="{default_birth}" required>
-        <label style="font-size:0.8rem; color:#666;">郵便番号</label>
-        <input type="text" name="zip" placeholder="123-4567" required>
-        <div class="consent">
-            <label><input type="checkbox" required> 自治体および運営へのデータ提供に同意します</label>
-        </div>
+        <div class="date-group"><select name="birth_y">{y_opts}</select>年<select name="birth_m">{m_opts}</select>月<select name="birth_d">{d_opts}</select>日</div>
+        <label style="font-size:0.8rem; color:#666;">郵便番号</label><input type="text" name="zip" placeholder="123-4567" required>
         <button type="submit">測定を開始する</button>
     </form></div></body></html>
     '''
 
-# --- [3] 測定画面 ---
 @app.route('/measure')
 def measure():
     if 'credentials' not in session: return redirect(url_for('top'))
     if 'user_info' not in session: return redirect(url_for('profile'))
-    # 性別データをテンプレートに渡す
     return render_template('index.html', gender=session['user_info']['gender'])
 
-# --- [4] 保存完了画面 ---
-@app.route('/success')
-def success():
-    return redirect(url_for('top')) # または元の完了画面
-
-# --- 認証ロジック ---
 @app.route('/login')
 def login():
     flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
@@ -107,14 +93,9 @@ def callback():
     flow.redirect_uri = "https://frail-system.onrender.com/callback"
     flow.fetch_token(code=request.args.get('code'))
     creds = flow.credentials
-    session['credentials'] = {
-        'token': creds.token, 'refresh_token': creds.refresh_token,
-        'token_uri': creds.token_uri, 'client_id': creds.client_id,
-        'client_secret': creds.client_secret, 'scopes': creds.scopes
-    }
+    session['credentials'] = {'token': creds.token, 'refresh_token': creds.refresh_token, 'token_uri': creds.token_uri, 'client_id': creds.client_id, 'client_secret': creds.client_secret, 'scopes': creds.scopes}
     return redirect(url_for('profile'))
 
-# --- データ保存API ---
 @app.route('/save', methods=['POST'])
 def save():
     if 'credentials' not in session: return jsonify({"status": "error"}), 401
@@ -123,33 +104,13 @@ def save():
         u = session.get('user_info', {})
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
-
-        # フォルダ「fraildata」を取得または作成
         folder_id = None
         q = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
         folders = service.files().list(q=q).execute().get('files', [])
         if folders: folder_id = folders[0]['id']
-        else:
-            folder_id = service.files().create(body={'name': 'fraildata', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
-
-        # 横1行のCSVデータ作成
+        else: folder_id = service.files().create(body={'name': 'fraildata', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
+        
         timestamp = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
         headers = ["時刻", "氏名", "性別", "生年月日", "郵便番号", "指輪っか", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q12", "Q13", "Q14", "Q15", "握力", "身長", "体重", "BMI"]
-        values = [
-            timestamp, u.get('name'), u.get('gender'), u.get('birth'), u.get('zip'),
-            data.get('finger'), *[data.get(f'q{i}') for i in range(1, 16)],
-            data.get('grip'), data.get('height'), data.get('weight'), data.get('bmi')
-        ]
-        csv_row = ",".join(headers) + "\n" + ",".join(map(str, values))
-
-        filename = f"測定_{u.get('name')}_{datetime.now().strftime('%m%d_%H%M')}.csv"
-        media = MediaInMemoryUpload(csv_row.encode('utf-8-sig'), mimetype='text/csv')
-        service.files().create(body={'name': filename, 'parents': [folder_id]}, media_body=media).execute()
-        
-        return jsonify({"status": "success"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+        values = [timestamp, u.get('name'), u.get('gender'), u.get('birth'), u.get('zip'), data.get('finger'), *[data.get(f'q{i}') for i in range(1, 16)], data.get('grip'), data.get('height'), data.get('weight'), data.get('bmi')]
+        csv_row = ",".join(headers) + "\n" + ",".
