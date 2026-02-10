@@ -11,28 +11,12 @@
         #q-no { font-size: 0.9rem; color: #6c757d; }
         #q-text { font-weight: bold; padding: 0 15px; font-size: 1.2rem; line-height: 1.3; }
         #progress-bar { position: absolute; bottom: 0; left: 0; height: 5px; background: #007bff; transition: width 0.3s; }
-        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; } /* 余白を微調整 */
+        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
         #drop-zone { width: 170px; height: 170px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; font-size: 1rem; margin-bottom: 10px; }
         .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.3rem; }
-        #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; } /* 高さを確保してガタつき防止 */
+        #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; }
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
-        
-        /* 次へボタンのスタイル修正 */
-        #next-btn { 
-            margin-top: 15px; 
-            padding: 15px 60px; 
-            border-radius: 40px; 
-            border: none; 
-            background: #28a745; 
-            color: white; 
-            font-size: 1.4rem; 
-            font-weight: bold; 
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-            /* 最初は透明＆クリック不可。場所だけ確保 */
-            visibility: hidden; 
-            pointer-events: none; 
-        }
-        
+        #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); visibility: hidden; pointer-events: none; }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; } .bg-yellow { background: #ffc107; color: #000; }
         .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
         .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
@@ -67,17 +51,12 @@
         { id: "calc", no: "計測", text: "身体計測（握力・BMI）", type: "calc" }
     ];
 
-    let currentIdx = 0, allAnswers = {}, active = null;
+    let currentIdx = 0, allAnswers = {}, colorResults = {}, active = null;
 
     function setNextBtnVisible(visible) {
         const btn = document.getElementById('next-btn');
-        if (visible) {
-            btn.style.visibility = "visible";
-            btn.style.pointerEvents = "auto";
-        } else {
-            btn.style.visibility = "hidden";
-            btn.style.pointerEvents = "none";
-        }
+        if (visible) { btn.style.visibility = "visible"; btn.style.pointerEvents = "auto"; } 
+        else { btn.style.visibility = "hidden"; btn.style.pointerEvents = "none"; }
     }
 
     function render() {
@@ -88,10 +67,7 @@
         const dropZone = document.getElementById('drop-zone');
         dropZone.innerHTML = "ここにシールを<br>ドラッグ";
         dropZone.style.display = q.type === "calc" ? "none" : "flex";
-        
-        // 計測画面なら最初からボタンを出す、それ以外は隠す
         setNextBtnVisible(q.type === "calc");
-
         const optsDiv = document.getElementById('options');
         optsDiv.innerHTML = "";
         if (q.type === "calc") {
@@ -132,7 +108,6 @@
         active.style.position = 'fixed'; active.style.zIndex = 1000; active.style.opacity = "0.7"; active.style.pointerEvents = 'none';
         document.body.appendChild(active);
         updatePos(t);
-        
         const moveHandler = (ev) => { if (ev.cancelable) ev.preventDefault(); updatePos(ev.touches ? ev.touches[0] : ev); };
         const endHandler = (ev) => {
             const et = ev.changedTouches ? ev.changedTouches[0] : ev;
@@ -141,10 +116,15 @@
             if (elementBelow && (elementBelow === dropZone || dropZone.contains(elementBelow))) {
                 const q = questions[currentIdx];
                 let colorClass = "bg-yellow";
-                if (q.type === "logic") { colorClass = q.blue.includes(original.innerText) ? "bg-blue" : "bg-red"; }
+                let colorKey = "yellow";
+                if (q.type === "logic") { 
+                    if (q.blue.includes(original.innerText)) { colorClass = "bg-blue"; colorKey = "blue"; }
+                    else { colorClass = "bg-red"; colorKey = "red"; }
+                }
                 dropZone.innerHTML = `<div class="placed-seal ${colorClass}">${original.innerText}</div>`;
                 allAnswers[q.id] = original.dataset.val;
-                setNextBtnVisible(true); // ボタンを表示
+                colorResults[q.id] = colorKey; // 色を記憶
+                setNextBtnVisible(true);
             }
             if (active) { active.remove(); active = null; }
             document.removeEventListener('touchmove', moveHandler); document.removeEventListener('touchend', endHandler);
@@ -157,8 +137,30 @@
     }
 
     function updatePos(t) { if (active) { active.style.left = (t.clientX - 40) + 'px'; active.style.top = (t.clientY - 40) + 'px'; } }
-    function judgeGrip() { const el = document.getElementById('grip'); const val = parseFloat(el.value); if (isNaN(val) || el.value === "") { document.getElementById('dot-grip').className = "status-dot"; return; } const threshold = (gender === "1") ? 28.1 : 18.1; document.getElementById('dot-grip').className = "status-dot " + (val < threshold ? "bg-red" : "bg-blue"); }
-    function calcBMI() { const hVal = document.getElementById('height').value, wVal = document.getElementById('weight').value; const h = parseFloat(hVal) / 100, w = parseFloat(wVal); if (h > 0 && w > 0 && parseFloat(hVal) >= 100) { const bmi = (w / (h * h)).toFixed(1); document.getElementById('bmi-val').innerText = bmi; document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue"); } else { document.getElementById('bmi-val').innerText = "-"; document.getElementById('dot-bmi').className = "status-dot"; } }
+    
+    function judgeGrip() { 
+        const el = document.getElementById('grip'); const val = parseFloat(el.value); 
+        if (isNaN(val) || el.value === "") { document.getElementById('dot-grip').className = "status-dot"; return; } 
+        const threshold = (gender === "1") ? 28.1 : 18.1; 
+        const isRed = val < threshold;
+        document.getElementById('dot-grip').className = "status-dot " + (isRed ? "bg-red" : "bg-blue");
+        colorResults['grip'] = isRed ? "red" : "blue";
+    }
+    
+    function calcBMI() { 
+        const hVal = document.getElementById('height').value, wVal = document.getElementById('weight').value; 
+        const h = parseFloat(hVal) / 100, w = parseFloat(wVal); 
+        if (h > 0 && w > 0 && parseFloat(hVal) >= 100) { 
+            const bmi = (w / (h * h)).toFixed(1); 
+            document.getElementById('bmi-val').innerText = bmi; 
+            const isRed = bmi < 21.5;
+            document.getElementById('dot-bmi').className = "status-dot " + (isRed ? "bg-red" : "bg-blue"); 
+            colorResults['bmi'] = isRed ? "red" : "blue";
+        } else { 
+            document.getElementById('bmi-val').innerText = "-"; 
+            document.getElementById('dot-bmi').className = "status-dot"; 
+        } 
+    }
 
     async function goNext() {
         if (currentIdx === questions.length - 1) {
@@ -169,9 +171,21 @@
             allAnswers.height = document.getElementById('height').value;
             allAnswers.weight = document.getElementById('weight').value;
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
+
             const response = await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
-            if (response.ok) { alert("保存しました。マイページへ戻ります。"); window.location.href = "/mypage"; }
-            else { alert("保存に失敗しました。"); btn.disabled = false; btn.innerText = "次へ"; btn.style.opacity = "1"; }
+            if (response.ok) {
+                // 保存に成功したら、色データを抱えて結果ページへ遷移
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/result';
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'colors';
+                input.value = JSON.stringify(colorResults);
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            } else { alert("保存に失敗しました。"); btn.disabled = false; btn.innerText = "次へ"; btn.style.opacity = "1"; }
         } else { currentIdx++; render(); }
     }
     render();
