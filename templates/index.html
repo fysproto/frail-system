@@ -69,4 +69,83 @@
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
                 <input type="text" id="grip" inputmode="decimal" oninput="formatAutoDecimal(this, 0, 99.9)" placeholder="0.0">
                 <label>身長 (cm)</label>
-                <input type="text" id="height" inputmode="decimal" oninput="
+                <input type="text" id="height" inputmode="decimal" oninput="formatAutoDecimal(this, 100.0, 200.0)" placeholder="160.0">
+                <label>体重 (kg)</label>
+                <input type="text" id="weight" inputmode="decimal" oninput="formatAutoDecimal(this, 20.0, 200.0)" placeholder="60.0">
+                <div style="font-weight:bold; margin-top:10px;">BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
+            </div>`;
+        } else {
+            q.opts.forEach((opt, i) => {
+                const el = document.createElement('div');
+                el.className = 'seal'; el.innerText = opt; el.dataset.val = i + 1;
+                // 正しい関数呼び出しに修正
+                el.addEventListener('touchstart', (e) => dragStart(e, el), { passive: false });
+                el.addEventListener('mousedown', (e) => dragStart(e, el));
+                optsDiv.appendChild(el);
+            });
+        }
+    }
+
+    function formatAutoDecimal(el, min, max) {
+        let v = el.value.replace(/\D/g, "");
+        if (!v) { el.value = ""; return; }
+        let num = (parseFloat(v) / 10).toFixed(1);
+        if (parseFloat(num) > max) { v = v.slice(0, -1); num = (parseFloat(v) / 10).toFixed(1); }
+        el.value = num;
+        if (el.id === 'grip') judgeGrip();
+        calcBMI();
+    }
+
+    function dragStart(e, original) {
+        if (active) return;
+        const t = e.touches ? e.touches[0] : e;
+        active = original.cloneNode(true);
+        active.style.position = 'fixed'; active.style.zIndex = 1000; active.style.opacity = "0.7"; active.style.pointerEvents = 'none';
+        document.body.appendChild(active);
+        updatePos(t);
+        
+        const moveHandler = (ev) => { if (ev.cancelable) ev.preventDefault(); updatePos(ev.touches ? ev.touches[0] : ev); };
+        const endHandler = (ev) => {
+            const et = ev.changedTouches ? ev.changedTouches[0] : ev;
+            const elementBelow = document.elementFromPoint(et.clientX, et.clientY);
+            const dropZone = document.getElementById('drop-zone');
+            if (elementBelow && (elementBelow === dropZone || dropZone.contains(elementBelow))) {
+                const q = questions[currentIdx];
+                let colorClass = "bg-yellow";
+                if (q.type === "logic") { colorClass = q.blue.includes(original.innerText) ? "bg-blue" : "bg-red"; }
+                dropZone.innerHTML = `<div class="placed-seal ${colorClass}">${original.innerText}</div>`;
+                allAnswers[q.id] = original.dataset.val;
+                document.getElementById('next-btn').style.display = "block";
+            }
+            if (active) { active.remove(); active = null; }
+            document.removeEventListener('touchmove', moveHandler); document.removeEventListener('touchend', endHandler);
+            document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', endHandler);
+        };
+        document.addEventListener('touchmove', moveHandler, { passive: false });
+        document.addEventListener('touchend', endHandler);
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', endHandler);
+    }
+
+    function updatePos(t) { if (active) { active.style.left = (t.clientX - 40) + 'px'; active.style.top = (t.clientY - 40) + 'px'; } }
+    function judgeGrip() { const el = document.getElementById('grip'); const val = parseFloat(el.value); if (isNaN(val) || el.value === "") { document.getElementById('dot-grip').className = "status-dot"; return; } const threshold = (gender === "1") ? 28.1 : 18.1; document.getElementById('dot-grip').className = "status-dot " + (val < threshold ? "bg-red" : "bg-blue"); }
+    function calcBMI() { const hVal = document.getElementById('height').value, wVal = document.getElementById('weight').value; const h = parseFloat(hVal) / 100, w = parseFloat(wVal); if (h > 0 && w > 0 && parseFloat(hVal) >= 100) { const bmi = (w / (h * h)).toFixed(1); document.getElementById('bmi-val').innerText = bmi; document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue"); } else { document.getElementById('bmi-val').innerText = "-"; document.getElementById('dot-bmi').className = "status-dot"; } }
+
+    async function goNext() {
+        if (currentIdx === questions.length - 1) {
+            const btn = document.getElementById('next-btn');
+            if (btn.disabled) return; 
+            btn.disabled = true; btn.innerText = "保存中..."; btn.style.opacity = "0.5"; 
+            allAnswers.grip = document.getElementById('grip').value;
+            allAnswers.height = document.getElementById('height').value;
+            allAnswers.weight = document.getElementById('weight').value;
+            allAnswers.bmi = document.getElementById('bmi-val').innerText;
+            const response = await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
+            if (response.ok) { alert("保存しました。マイページへ戻ります。"); window.location.href = "/mypage"; }
+            else { alert("保存に失敗しました。"); btn.disabled = false; btn.innerText = "次へ"; btn.style.opacity = "1"; }
+        } else { currentIdx++; render(); }
+    }
+    render();
+</script>
+</body>
+</html>
