@@ -13,21 +13,35 @@
         #progress-bar { position: absolute; bottom: 0; left: 0; height: 5px; background: #007bff; transition: width 0.3s; }
         #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
         #drop-zone { width: 170px; height: 170px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; font-size: 1rem; margin-bottom: 10px; }
-        .placed-ohajiki { width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem; box-shadow: inset 0 0 15px rgba(255,255,255,0.5), 0 4px 10px rgba(0,0,0,0.2); position: relative; }
+        
+        /* おはじきデザイン（平べったい円盤） */
+        .placed-ohajiki { 
+            width: 140px; height: 140px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            color: white; font-weight: bold; font-size: 1.2rem;
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.5), 0 4px 10px rgba(0,0,0,0.2), inset -2px -4px 6px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.3); position: relative;
+        }
+        .placed-ohajiki::before { content: ''; position: absolute; top: 10%; left: 10%; width: 80%; height: 80%; border-radius: 50%; border-top: 3px solid rgba(255,255,255,0.4); }
+
         #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; }
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
-        #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; visibility: hidden; }
-        .ohajiki-blue { background: #007bff; } .ohajiki-red { background: #dc3545; } .ohajiki-white { background: #fff; color: #666 !important; border: 1px solid #ccc; }
+        #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; visibility: hidden; pointer-events: none; }
+        
+        .ohajiki-blue { background: rgba(0, 123, 255, 0.85); }
+        .ohajiki-red { background: rgba(220, 53, 69, 0.85); }
+        .ohajiki-white { background: rgba(255, 255, 255, 0.95); color: #666 !important; border: 1px solid #ccc; }
         .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; }
         .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
         .input-group input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 <div id="app">
     <header><div id="q-no"></div><div id="q-text"></div><div id="progress-bar"></div></header>
-    <div id="main-stage"><div id="drop-zone">ここにシールをドラッグ</div><div id="options"></div><button id="next-btn" onclick="goNext()">次へ</button></div>
+    <div id="main-stage"><div id="drop-zone">ここにシールを<br>ドラッグ</div><div id="options"></div><button id="next-btn" onclick="goNext()">次へ</button></div>
 </div>
 <script>
     const gender = "{{ gender|safe }}" || "1";
@@ -53,89 +67,131 @@
 
     let currentIdx = 0, allAnswers = {}, colorResults = {}, active = null;
 
+    function setNextBtnVisible(visible) {
+        const btn = document.getElementById('next-btn');
+        btn.style.visibility = visible ? "visible" : "hidden";
+        btn.style.pointerEvents = visible ? "auto" : "none";
+    }
+
     function render() {
         const q = questions[currentIdx];
         document.getElementById('q-no').innerText = q.no !== "計測" ? `質問 ${q.no} / 15` : "計測項目";
         document.getElementById('q-text').innerText = q.text;
         document.getElementById('progress-bar').style.width = `${(currentIdx / questions.length) * 100}%`;
         const dropZone = document.getElementById('drop-zone');
-        dropZone.innerHTML = "ここにシールをドラッグ";
+        dropZone.innerHTML = "ここにシールを<br>ドラッグ";
         dropZone.style.display = q.type === "calc" ? "none" : "flex";
-        document.getElementById('next-btn').style.visibility = q.type === "calc" ? "visible" : "hidden";
+        setNextBtnVisible(q.type === "calc");
         const optsDiv = document.getElementById('options');
         optsDiv.innerHTML = "";
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" oninput="formatAutoDecimal(this, 0, 99.9)">
-                <label>身長 (cm)</label><input type="text" id="height" inputmode="decimal" oninput="formatAutoDecimal(this, 100, 200)">
-                <label>体重 (kg)</label><input type="text" id="weight" inputmode="decimal" oninput="formatAutoDecimal(this, 20, 200)">
-                <div>BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
+                <input type="text" id="grip" inputmode="decimal" oninput="formatAutoDecimal(this, 0, 99.9)" placeholder="0.0">
+                <label>身長 (cm)</label>
+                <input type="text" id="height" inputmode="decimal" oninput="formatAutoDecimal(this, 100.0, 200.0)" placeholder="160.0">
+                <label>体重 (kg)</label>
+                <input type="text" id="weight" inputmode="decimal" oninput="formatAutoDecimal(this, 20.0, 200.0)" placeholder="60.0">
+                <div style="font-weight:bold; margin-top:10px;">BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
             </div>`;
         } else {
-            q.opts.forEach(opt => {
-                const el = document.createElement('div'); el.className = 'seal'; el.innerText = opt;
-                el.addEventListener('touchstart', (e) => dragStart(e, el, opt, q), { passive: false });
+            q.opts.forEach((opt, i) => {
+                const el = document.createElement('div');
+                el.className = 'seal'; el.innerText = opt; el.dataset.val = i + 1;
+                el.addEventListener('touchstart', (e) => dragStart(e, el), { passive: false });
+                el.addEventListener('mousedown', (e) => dragStart(e, el));
                 optsDiv.appendChild(el);
             });
         }
     }
 
     function formatAutoDecimal(el, min, max) {
-        let v = el.value.replace(/\D/g, ""); if (!v) return;
-        let num = (parseFloat(v) / 10).toFixed(1); el.value = num;
-        if (el.id === 'grip') judgeGrip(); calcBMI();
+        let v = el.value.replace(/\D/g, "");
+        if (!v) { el.value = ""; return; }
+        let num = (parseFloat(v) / 10).toFixed(1);
+        if (parseFloat(num) > max) { v = v.slice(0, -1); num = (parseFloat(v) / 10).toFixed(1); }
+        el.value = num;
+        if (el.id === 'grip') judgeGrip();
+        calcBMI();
     }
 
-    function dragStart(e, original, opt, q) {
-        active = original.cloneNode(true); active.style.position = 'fixed'; active.style.zIndex = 1000; document.body.appendChild(active);
-        const move = (ev) => { active.style.left = (ev.touches[0].clientX - 40) + 'px'; active.style.top = (ev.touches[0].clientY - 40) + 'px'; };
-        const end = (ev) => {
-            const rect = document.getElementById('drop-zone').getBoundingClientRect();
-            const t = ev.changedTouches[0];
-            if (t.clientX > rect.left && t.clientX < rect.right && t.clientY > rect.top && t.clientY < rect.bottom) {
+    function dragStart(e, original) {
+        if (active) return;
+        const t = e.touches ? e.touches[0] : e;
+        active = original.cloneNode(true);
+        active.style.position = 'fixed'; active.style.zIndex = 1000; active.style.opacity = "0.7"; active.style.pointerEvents = 'none';
+        document.body.appendChild(active);
+        updatePos(t);
+        const moveHandler = (ev) => { if (ev.cancelable) ev.preventDefault(); updatePos(ev.touches ? ev.touches[0] : ev); };
+        const endHandler = (ev) => {
+            const et = ev.changedTouches ? ev.changedTouches[0] : ev;
+            const elementBelow = document.elementFromPoint(et.clientX, et.clientY);
+            const dropZone = document.getElementById('drop-zone');
+            if (elementBelow && (elementBelow === dropZone || dropZone.contains(elementBelow))) {
+                const q = questions[currentIdx];
                 let colorKey = "white", colorClass = "ohajiki-white";
-                if (q.type === "logic") {
-                    colorKey = q.blue.includes(opt) ? "blue" : "red";
-                    colorClass = colorKey === "blue" ? "ohajiki-blue" : "ohajiki-red";
+                if (q.type === "logic") { 
+                    if (q.blue.includes(original.innerText)) { colorClass = "ohajiki-blue"; colorKey = "blue"; }
+                    else { colorClass = "ohajiki-red"; colorKey = "red"; }
+                } else if (q.id === "finger") {
+                    if (q.blue.includes(original.innerText)) { colorClass = "ohajiki-blue"; colorKey = "blue"; }
+                    else { colorClass = "ohajiki-red"; colorKey = "red"; }
                 }
-                document.getElementById('drop-zone').innerHTML = `<div class="placed-ohajiki ${colorClass}">${opt}</div>`;
-                allAnswers[q.id] = opt; colorResults[q.id] = colorKey;
-                document.getElementById('next-btn').style.visibility = "visible";
+                dropZone.innerHTML = `<div class="placed-ohajiki ${colorClass}">${original.innerText}</div>`;
+                allAnswers[q.id] = original.dataset.val;
+                colorResults[q.id] = colorKey;
+                setNextBtnVisible(true);
             }
-            active.remove(); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', end);
+            if (active) { active.remove(); active = null; }
+            document.removeEventListener('touchmove', moveHandler); document.removeEventListener('touchend', endHandler);
+            document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', endHandler);
         };
-        document.addEventListener('touchmove', move, { passive: false }); document.addEventListener('touchend', end);
+        document.addEventListener('touchmove', moveHandler, { passive: false });
+        document.addEventListener('touchend', endHandler);
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', endHandler);
     }
 
-    function judgeGrip() {
-        const val = parseFloat(document.getElementById('grip').value);
-        const threshold = (gender === "1") ? 28.1 : 18.1;
+    function updatePos(t) { if (active) { active.style.left = (t.clientX - 40) + 'px'; active.style.top = (t.clientY - 40) + 'px'; } }
+    
+    function judgeGrip() { 
+        const el = document.getElementById('grip'); const val = parseFloat(el.value); 
+        if (isNaN(val) || el.value === "") { document.getElementById('dot-grip').className = "status-dot"; return; } 
+        const threshold = (gender === "1") ? 28.1 : 18.1; 
         const isRed = val < threshold;
         document.getElementById('dot-grip').className = "status-dot " + (isRed ? "bg-red" : "bg-blue");
         colorResults['grip'] = isRed ? "red" : "blue";
     }
-
-    function calcBMI() {
-        const h = parseFloat(document.getElementById('height').value)/100, w = parseFloat(document.getElementById('weight').value);
-        if (h > 0 && w > 0) {
-            const bmi = (w / (h * h)).toFixed(1);
-            document.getElementById('bmi-val').innerText = bmi;
+    
+    function calcBMI() { 
+        const hVal = document.getElementById('height').value, wVal = document.getElementById('weight').value; 
+        const h = parseFloat(hVal) / 100, w = parseFloat(wVal); 
+        if (h > 0 && w > 0 && parseFloat(hVal) >= 100) { 
+            const bmi = (w / (h * h)).toFixed(1); 
+            document.getElementById('bmi-val').innerText = bmi; 
             const isRed = bmi < 21.5;
-            document.getElementById('dot-bmi').className = "status-dot " + (isRed ? "bg-red" : "bg-blue");
+            document.getElementById('dot-bmi').className = "status-dot " + (isRed ? "bg-red" : "bg-blue"); 
             colorResults['bmi'] = isRed ? "red" : "blue";
-        }
+        } else { document.getElementById('bmi-val').innerText = "-"; document.getElementById('dot-bmi').className = "status-dot"; } 
     }
 
     async function goNext() {
         if (currentIdx === questions.length - 1) {
+            const btn = document.getElementById('next-btn');
+            btn.disabled = true; btn.innerText = "保存中..."; btn.style.opacity = "0.5"; 
             allAnswers.grip = document.getElementById('grip').value;
+            allAnswers.height = document.getElementById('height').value;
+            allAnswers.weight = document.getElementById('weight').value;
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
-            await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
-            const form = document.createElement('form'); form.method = 'POST'; form.action = '/result';
-            const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
-            const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
-            form.append(iA, iC); document.body.appendChild(form); form.submit();
+
+            const response = await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
+            if (response.ok) {
+                const form = document.createElement('form');
+                form.method = 'POST'; form.action = '/result';
+                const input = document.createElement('input');
+                input.type = 'hidden'; input.name = 'colors'; input.value = JSON.stringify(colorResults);
+                form.appendChild(input); document.body.appendChild(form); form.submit();
+            } else { alert("保存に失敗しました。"); btn.disabled = false; btn.innerText = "次へ"; btn.style.opacity = "1"; }
         } else { currentIdx++; render(); }
     }
     render();
