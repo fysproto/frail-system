@@ -10,7 +10,6 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "frail_app_key_2024"
 
-# --- Google OAuth 設定 ---
 CLIENT_CONFIG = {
     "web": {
         "client_id": "734131799600-cn8qec6q6dqh24v93bf4ubabb0gtjm5d.apps.googleusercontent.com",
@@ -25,13 +24,39 @@ SCOPES = ['https://www.googleapis.com/auth/drive.file']
 @app.route('/')
 def top():
     if 'credentials' in session:
-        return redirect(url_for('profile'))
+        return redirect(url_for('mypage'))
     return '''
-    <html>
-    <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;}
     button{padding:25px 50px;font-size:1.6rem;cursor:pointer;background:#007bff;color:white;border:none;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);font-weight:bold;}</style></head>
     <body><h1 style="font-size:2.2rem;margin-bottom:50px;">フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>
+    '''
+
+@app.route('/mypage')
+def mypage():
+    if 'credentials' not in session: return redirect(url_for('top'))
+    if 'user_info' not in session: return redirect(url_for('profile'))
+    u = session['user_info']
+    return f'''
+    <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+    body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}
+    .card{{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:400px; margin:auto;}}
+    button{{width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:15px; font-size:1.3rem; font-weight:bold; cursor:pointer; margin-top:20px;}}
+    </style></head><body><div class="card"><h2>マイページ</h2><p>{u.get("name")} 様</p>
+    <a href="/consent"><button>測定を開始する</button></a></div></body></html>
+    '''
+
+@app.route('/consent')
+def consent():
+    if 'credentials' not in session: return redirect(url_for('top'))
+    return '''
+    <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+    body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}
+    .box{{background:white; padding:20px; border-radius:15px; text-align:left; height:300px; overflow-y:auto; border:1px solid #ddd;}}
+    button{{width:100%; padding:20px; background:#007bff; color:white; border:none; border-radius:15px; font-size:1.2rem; margin-top:20px;}}
+    </style></head><body><div style="max-width:400px; margin:auto;"><h3>測定への同意</h3>
+    <div class="box"><p>【同意事項】</p><p>・測定データは統計的に処理され、個人の特定はされません。</p><p>・データはGoogle Driveへ保存されます。</p></div>
+    <a href="/measure"><button>同意して開始する</button></a></div></body></html>
     '''
 
 @app.route('/profile', methods=['GET', 'POST'])
@@ -45,34 +70,24 @@ def profile():
             "birth": birth,
             "zip": request.form.get('zip')
         }
-        return redirect(url_for('measure'))
+        return redirect(url_for('mypage'))
 
-    # セレクトボックスの選択肢生成
     y_opts = "".join([f'<option value="{y}" {"selected" if y==1955 else ""}>{y}</option>' for y in range(1930, 2011)])
     m_opts = "".join([f'<option value="{m}">{m}</option>' for m in range(1, 13)])
     d_opts = "".join([f'<option value="{d}">{d}</option>' for d in range(1, 32)])
 
     return f'''
-    <html>
-    <head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <style>
-        body{{padding:15px; font-family:sans-serif; background:#f0f4f8; margin:0; box-sizing:border-box; overflow-x:hidden;}}
-        .card{{background:white; padding:20px; border-radius:15px; width:100%; max-width:400px; margin:auto; box-shadow:0 4px 10px rgba(0,0,0,0.05); box-sizing:border-box;}}
-        input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:16px; background:white;}}
-        .date-group{{display:flex; gap:5px; align-items:center; margin:10px 0;}}
-        .date-group select{{flex:1; margin:0;}}
-        button{{width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; font-size:1.1rem; font-weight:bold; cursor:pointer; margin-top:20px;}}
-    </style></head>
-    <body><div class="card"><h2>📋 基本情報の入力</h2>
-    <form method="POST">
-        <label style="font-size:0.8rem; color:#666;">お名前</label><input type="text" name="name" required>
-        <label style="font-size:0.8rem; color:#666;">性別</label>
-        <select name="gender" required><option value="">選択してください</option><option value="1">男性</option><option value="2">女性</option></select>
-        <label style="font-size:0.8rem; color:#666;">生年月日</label>
-        <div class="date-group"><select name="birth_y">{y_opts}</select>年<select name="birth_m">{m_opts}</select>月<select name="birth_d">{d_opts}</select>日</div>
-        <label style="font-size:0.8rem; color:#666;">郵便番号</label><input type="text" name="zip" placeholder="123-4567" required>
-        <button type="submit">測定を開始する</button>
-    </form></div></body></html>
+    <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <style>body{{padding:15px; font-family:sans-serif; background:#f0f4f8; margin:0;}}
+    .card{{background:white; padding:20px; border-radius:15px; width:100%; max-width:400px; margin:auto; box-shadow:0 4px 10px rgba(0,0,0,0.05);}}
+    input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:8px; font-size:16px;}}
+    .date-group{{display:flex; gap:5px; align-items:center;}}
+    button{{width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; font-size:1.1rem; font-weight:bold;}}</style></head>
+    <body><div class="card"><h2>📋 基本情報の入力</h2><form method="POST">
+    <label>お名前</label><input type="text" name="name" required>
+    <label>性別</label><select name="gender" required><option value="">選択</option><option value="1">男性</option><option value="2">女性</option></select>
+    <label>生年月日</label><div class="date-group"><select name="birth_y">{y_opts}</select>年<select name="birth_m">{m_opts}</select>月<select name="birth_d">{d_opts}</select>日</div>
+    <label>郵便番号</label><input type="text" name="zip" required><button type="submit">次へ進む</button></form></div></body></html>
     '''
 
 @app.route('/measure')
