@@ -8,7 +8,7 @@ from googleapiclient.http import MediaInMemoryUpload
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "frail_app_key_2026_final"
+app.secret_key = "frail_app_key_2026_final_stable"
 
 CLIENT_CONFIG = {
     "web": {
@@ -24,7 +24,10 @@ SCOPES = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.
 @app.route('/')
 def top():
     if 'credentials' in session: return redirect(url_for('mypage'))
-    return '<html><body style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;font-family:sans-serif;background:#f0f4f8;"><h1>フレイル測定システム</h1><a href="/login"><button style="padding:20px 40px;font-size:1.5rem;background:#007bff;color:white;border:none;border-radius:10px;">Googleログイン</button></a></body></html>'
+    return '''<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;}
+    button{padding:25px 50px;font-size:1.6rem;cursor:pointer;background:#007bff;color:white;border:none;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);font-weight:bold;}</style></head>
+    <body><h1 style="font-size:2.2rem;margin-bottom:50px;">フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>'''
 
 @app.route('/login')
 def login():
@@ -38,14 +41,9 @@ def callback():
     flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
     flow.redirect_uri = url_for('callback', _external=True)
     flow.fetch_token(code=request.args.get('code'))
-    session['credentials'] = flow.credentials.__dict__
-    try:
-        service = build('drive', 'v3', credentials=flow.credentials)
-        files = service.files().list(q="name = 'profile_data.json'", spaces='appDataFolder').execute().get('files', [])
-        if files:
-            content = service.files().get_media(fileId=files[0]['id']).execute()
-            session['user_info'] = json.loads(content.decode('utf-8'))
-    except: pass
+    creds = flow.credentials
+    session['credentials'] = {'token': creds.token, 'refresh_token': creds.refresh_token, 'token_uri': creds.token_uri, 'client_id': creds.client_id, 'client_secret': creds.client_secret, 'scopes': creds.scopes}
+    session['user_info'] = {"name": "利用者様", "gender": "1"} 
     return redirect(url_for('mypage'))
 
 @app.route('/mypage')
@@ -53,56 +51,45 @@ def mypage():
     if 'credentials' not in session: return redirect(url_for('top'))
     u = session.get('user_info', {})
     return f'''
-    <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>body{{padding:20px;font-family:sans-serif;background:#f0f4f8;text-align:center;}}
-    .card{{background:white;padding:30px;border-radius:20px;box-shadow:0 4px 10px rgba(0,0,0,0.05);max-width:400px;margin:auto;}}
-    .btn{{display:block;width:100%;padding:18px;margin:10px 0;border-radius:12px;font-weight:bold;font-size:1.1rem;text-decoration:none;text-align:center;box-sizing:border-box;}}
-    .btn-main{{background:#28a745;color:white;}} .btn-sub{{background:#6c757d;color:white;}}
+    <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+    body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}
+    .card{{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:400px; margin:auto;}}
+    .btn{{display:block; width:100%; padding:18px; margin:10px 0; border-radius:12px; font-weight:bold; text-decoration:none; box-sizing:border-box; font-size:1.1rem;}}
+    .btn-main{{background:#28a745; color:white;}} .btn-sub{{background:#6c757d; color:white;}}
     </style></head><body><div class="card">
-    <h2>マイページ</h2><p>{u.get('name', 'ゲスト')} 様</p>
+    <h2>マイページ</h2><p>こんにちは、{u.get('name')} さん</p>
     <a href="/measure" class="btn btn-main">測定を開始する</a>
-    <a href="/history" class="btn btn-sub">過去の履歴を見る</a>
-    <a href="/logout" style="color:red;display:block;margin-top:20px;">ログアウト</a>
+    <a href="https://drive.google.com/" target="_blank" class="btn btn-sub">過去の履歴を見る</a>
+    <a href="/logout" style="color:red; display:block; margin-top:20px;">ログアウト</a>
     </div></body></html>'''
 
 @app.route('/measure')
 def measure():
-    return render_template('index.html', gender=session.get('user_info', {}).get('gender', '1'))
+    if 'credentials' not in session: return redirect(url_for('top'))
+    return render_template('index.html', gender=session['user_info'].get('gender', '1'))
 
 @app.route('/save', methods=['POST'])
 def save():
-    data = request.json
-    u = session.get('user_info', {})
-    creds = Credentials(**session['credentials'])
-    service = build('drive', 'v3', credentials=creds)
-    
-    q_f = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
-    folders = service.files().list(q=q_f).execute().get('files', [])
-    f_id = folders[0]['id'] if folders else service.files().create(body={'name': 'fraildata', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
-    
-    now = datetime.now()
-    headers = ["時刻", "氏名", "性別", "生年月日", "郵便番号", "指輪っか", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q12", "Q13", "Q14", "Q15", "握力", "身長", "体重", "BMI"]
-    values = [now.strftime('%Y/%m/%d %H:%M'), u.get('name'), u.get('gender'), u.get('birth'), u.get('zip'), data.get('finger'), *[data.get(f'q{i}') for i in range(1, 16)], data.get('grip'), data.get('height'), data.get('weight'), data.get('bmi')]
-    csv_line = ",".join(map(str, values))
-    media = MediaInMemoryUpload((",".join(headers) + "\n" + csv_line).encode('utf-8-sig'), mimetype='text/csv')
-    service.files().create(body={'name': f"測定_{u.get('name')}_{now.strftime('%m%d_%H%M')}.csv", 'parents': [f_id]}, media_body=media).execute()
-    return jsonify({"status": "success"})
+    try:
+        data = request.json
+        creds = Credentials(**session['credentials'])
+        service = build('drive', 'v3', credentials=creds)
+        q = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+        folders = service.files().list(q=q).execute().get('files', [])
+        f_id = folders[0]['id'] if folders else service.files().create(body={'name': 'fraildata', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
+        csv_content = f"Date,{datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
+        for k, v in data.items(): csv_content += f"{k},{v}\n"
+        media = MediaInMemoryUpload(csv_content.encode('utf-8-sig'), mimetype='text/csv')
+        service.files().create(body={'name': f"測定_{datetime.now().strftime('%m%d_%H%M')}.csv", 'parents': [f_id]}, media_body=media).execute()
+        return jsonify({"status": "success"})
+    except Exception as e: return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/result', methods=['POST'])
 def result():
-    # フォームから回答データとおはじき色データを受け取る
     answers = json.loads(request.form.get('answers', '{}'))
     colors = json.loads(request.form.get('colors', '{}'))
     user = session.get('user_info', {})
     return render_template('result.html', answers=answers, colors=colors, user=user, date=datetime.now().strftime('%Y/%m/%d'))
-
-@app.route('/history')
-def history():
-    creds = Credentials(**session['credentials'])
-    service = build('drive', 'v3', credentials=creds)
-    q = "name contains '測定_' and mimeType = 'text/csv' and trashed = false"
-    files = service.files().list(q=q, orderBy="createdTime desc", pageSize=15).execute().get('files', [])
-    return render_template('history.html', files=files)
 
 @app.route('/logout')
 def logout():
@@ -110,4 +97,4 @@ def logout():
     return redirect(url_for('top'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
