@@ -16,7 +16,7 @@
         .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.3rem; }
         #options { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; justify-content: center; width: 100%; }
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
-        #next-btn { margin-top: 30px; padding: 18px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; display: none; font-weight: bold; box-shadow: 0 4px 15px rgba(40,167,69,0.3); }
+        #next-btn { margin-top: 30px; padding: 18px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; display: none; font-weight: bold; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; } .bg-yellow { background: #ffc107; color: #000; }
         .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
         .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
@@ -65,69 +65,8 @@
         const optsDiv = document.getElementById('options');
         optsDiv.innerHTML = "";
         if (q.type === "calc") {
-            optsDiv.innerHTML = `<div class="input-group"><label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label><input type="number" id="grip" step="0.1" oninput="judgeGrip()"><label>身長 (cm)</label><input type="number" id="height" step="0.1" oninput="calcBMI()"><label>体重 (kg)</label><input type="number" id="weight" step="0.1" oninput="calcBMI()"><div style="font-weight:bold; margin-top:10px;">BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div></div>`;
-        } else {
-            q.opts.forEach((opt, i) => {
-                const el = document.createElement('div');
-                el.className = 'seal'; el.innerText = opt; el.dataset.val = i + 1;
-                el.ontouchstart = (e) => dragStart(e, el); el.onmousedown = (e) => dragStart(e, el);
-                optsDiv.appendChild(el);
-            });
-        }
-    }
-
-    function dragStart(e, original) {
-        if (active) return;
-        const t = e.touches ? e.touches[0] : e;
-        active = original.cloneNode(true);
-        active.style.position = 'fixed'; active.style.zIndex = 1000; active.style.opacity = "0.7"; active.style.pointerEvents = 'none';
-        document.body.appendChild(active);
-        updatePos(t);
-        const moveHandler = (ev) => { if (ev.cancelable) ev.preventDefault(); updatePos(ev.touches ? ev.touches[0] : ev); };
-        const endHandler = (ev) => {
-            const et = ev.changedTouches ? ev.changedTouches[0] : ev;
-            const elementBelow = document.elementFromPoint(et.clientX, et.clientY);
-            const dropZone = document.getElementById('drop-zone');
-            if (elementBelow && (elementBelow === dropZone || dropZone.contains(elementBelow))) {
-                const q = questions[currentIdx];
-                let colorClass = "bg-yellow";
-                if (q.type === "logic") { colorClass = q.blue.includes(original.innerText) ? "bg-blue" : "bg-red"; }
-                dropZone.innerHTML = `<div class="placed-seal ${colorClass}">${original.innerText}</div>`;
-                allAnswers[q.id] = original.dataset.val;
-                document.getElementById('next-btn').style.display = "block";
-            }
-            if (active) { active.remove(); active = null; }
-            document.removeEventListener('touchmove', moveHandler); document.removeEventListener('touchend', endHandler);
-            document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', endHandler);
-        };
-        document.addEventListener('touchmove', moveHandler, { passive: false }); document.addEventListener('touchend', endHandler);
-        document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', endHandler);
-    }
-
-    function updatePos(t) { if (active) { active.style.left = (t.clientX - 40) + 'px'; active.style.top = (t.clientY - 40) + 'px'; } }
-    function judgeGrip() { const val = parseFloat(document.getElementById('grip').value); if (isNaN(val)) return; const threshold = (gender === "1") ? 28.1 : 18.1; document.getElementById('dot-grip').className = "status-dot " + (val < threshold ? "bg-red" : "bg-blue"); }
-    function calcBMI() { const h = parseFloat(document.getElementById('height').value) / 100, w = parseFloat(document.getElementById('weight').value); if (h > 0 && w > 0) { const bmi = (w / (h * h)).toFixed(1); document.getElementById('bmi-val').innerText = bmi; document.getElementById('dot-bmi').className = "status-dot " + (bmi < 21.5 ? "bg-red" : "bg-blue"); } }
-
-    async function goNext() {
-        if (currentIdx === questions.length - 1) {
-
-		// --- 二重送信防止と状態表示 ---
-		const btn = document.getElementById('next-btn');
-		if (btn.disabled) return; // 既に押されていたら何もしない
-		btn.disabled = true;       // ボタンを無効化
-		btn.innerText = "保存中..."; // 文字を変える
-		btn.style.opacity = "0.5"; // 見た目も変える
-                // --- ここまで ---
-
-	    allAnswers.grip = document.getElementById('grip').value;
-            allAnswers.height = document.getElementById('height').value;
-            allAnswers.weight = document.getElementById('weight').value;
-            allAnswers.bmi = document.getElementById('bmi-val').innerText;
-            const response = await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
-            if (response.ok) { alert("保存しました。マイページへ戻ります。"); window.location.href = "/mypage"; }
-        } else { currentIdx++; render(); }
-    }
-    render();
-</script>
-</body>
-</html>
+            optsDiv.innerHTML = `<div class="input-group">
+                <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
+                <input type="text" id="grip" inputmode="decimal" oninput="formatAutoDecimal(this, 0, 99.9)" placeholder="0.0">
+                <label>身長 (cm)</label>
+                <input type="text" id="height" inputmode="decimal" oninput="
