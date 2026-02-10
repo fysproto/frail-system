@@ -11,12 +11,28 @@
         #q-no { font-size: 0.9rem; color: #6c757d; }
         #q-text { font-weight: bold; padding: 0 15px; font-size: 1.2rem; line-height: 1.3; }
         #progress-bar { position: absolute; bottom: 0; left: 0; height: 5px; background: #007bff; transition: width 0.3s; }
-        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; }
-        #drop-zone { width: 170px; height: 170px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; font-size: 1rem; margin-bottom: 15px; }
+        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; } /* 余白を微調整 */
+        #drop-zone { width: 170px; height: 170px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; font-size: 1rem; margin-bottom: 10px; }
         .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.3rem; }
-        #options { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; justify-content: center; width: 100%; }
+        #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; } /* 高さを確保してガタつき防止 */
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
-        #next-btn { margin-top: 30px; padding: 18px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; display: none; font-weight: bold; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
+        
+        /* 次へボタンのスタイル修正 */
+        #next-btn { 
+            margin-top: 15px; 
+            padding: 15px 60px; 
+            border-radius: 40px; 
+            border: none; 
+            background: #28a745; 
+            color: white; 
+            font-size: 1.4rem; 
+            font-weight: bold; 
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            /* 最初は透明＆クリック不可。場所だけ確保 */
+            visibility: hidden; 
+            pointer-events: none; 
+        }
+        
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; } .bg-yellow { background: #ffc107; color: #000; }
         .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
         .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
@@ -53,6 +69,17 @@
 
     let currentIdx = 0, allAnswers = {}, active = null;
 
+    function setNextBtnVisible(visible) {
+        const btn = document.getElementById('next-btn');
+        if (visible) {
+            btn.style.visibility = "visible";
+            btn.style.pointerEvents = "auto";
+        } else {
+            btn.style.visibility = "hidden";
+            btn.style.pointerEvents = "none";
+        }
+    }
+
     function render() {
         const q = questions[currentIdx];
         document.getElementById('q-no').innerText = q.no !== "計測" ? `質問 ${q.no} / 15` : "計測項目";
@@ -61,7 +88,10 @@
         const dropZone = document.getElementById('drop-zone');
         dropZone.innerHTML = "ここにシールを<br>ドラッグ";
         dropZone.style.display = q.type === "calc" ? "none" : "flex";
-        document.getElementById('next-btn').style.display = q.type === "calc" ? "block" : "none";
+        
+        // 計測画面なら最初からボタンを出す、それ以外は隠す
+        setNextBtnVisible(q.type === "calc");
+
         const optsDiv = document.getElementById('options');
         optsDiv.innerHTML = "";
         if (q.type === "calc") {
@@ -78,7 +108,6 @@
             q.opts.forEach((opt, i) => {
                 const el = document.createElement('div');
                 el.className = 'seal'; el.innerText = opt; el.dataset.val = i + 1;
-                // 正しい関数呼び出しに修正
                 el.addEventListener('touchstart', (e) => dragStart(e, el), { passive: false });
                 el.addEventListener('mousedown', (e) => dragStart(e, el));
                 optsDiv.appendChild(el);
@@ -115,7 +144,7 @@
                 if (q.type === "logic") { colorClass = q.blue.includes(original.innerText) ? "bg-blue" : "bg-red"; }
                 dropZone.innerHTML = `<div class="placed-seal ${colorClass}">${original.innerText}</div>`;
                 allAnswers[q.id] = original.dataset.val;
-                document.getElementById('next-btn').style.display = "block";
+                setNextBtnVisible(true); // ボタンを表示
             }
             if (active) { active.remove(); active = null; }
             document.removeEventListener('touchmove', moveHandler); document.removeEventListener('touchend', endHandler);
