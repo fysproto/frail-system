@@ -41,9 +41,13 @@ def mypage():
     <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
     body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}
     .card{{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:400px; margin:auto;}}
-    button{{width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:15px; font-size:1.3rem; font-weight:bold; cursor:pointer; margin-top:20px;}}
-    </style></head><body><div class="card"><h2>マイページ</h2><p>{u.get("name")} 様</p>
-    <a href="/consent"><button>測定を開始する</button></a></div></body></html>
+    .btn-start{{width:100%; padding:20px; background:#28a745; color:white; border:none; border-radius:15px; font-size:1.3rem; font-weight:bold; cursor:pointer; margin-top:10px;}}
+    .btn-history{{width:100%; padding:20px; background:#6c757d; color:white; border:none; border-radius:15px; font-size:1.1rem; font-weight:bold; cursor:pointer; margin-top:20px;}}
+    </style></head><body><div class="card">
+    <h2>マイページ</h2>
+    <a href="/consent"><button class="btn-start">測定を開始する</button></a>
+    <button class="btn-history" onclick="alert('履歴機能は準備中です')">過去の履歴を見る</button>
+    </div></body></html>
     '''
 
 @app.route('/consent')
