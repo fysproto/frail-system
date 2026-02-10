@@ -99,20 +99,44 @@ def profile():
     m_opts = "".join([f'<option value="{m}" {"selected" if str(m)==cur_m else ""}>{m}</option>' for m in range(1, 13)])
     d_opts = "".join([f'<option value="{d}" {"selected" if str(d)==cur_d else ""}>{d}</option>' for d in range(1, 32)])
 
-    return f'''
+ return f'''
     <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <style>body{{padding:15px; font-family:sans-serif; background:#f0f4f8; margin:0;}}
-    .card{{background:white; padding:20px; border-radius:15px; width:100%; max-width:400px; margin:auto; box-shadow:0 4px 10px rgba(0,0,0,0.05);}}
-    input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:8px; font-size:16px;}}
-    .date-group{{display:flex; gap:5px; align-items:center;}}
-    button{{width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; font-size:1.1rem; font-weight:bold;}}</style></head>
-    <body><div class="card"><h2>📋 基本情報の入力</h2><form method="POST">
-    <label>お名前</label><input type="text" name="name" value="{u.get('name','')}" required>
-    <label>性別</label><select name="gender" required><option value="">選択</option>
-    <option value="1" {"selected" if u.get('gender')=="1" else ""}>男性</option>
-    <option value="2" {"selected" if u.get('gender')=="2" else ""}>女性</option></select>
-    <label>生年月日</label><div class="date-group"><select name="birth_y">{y_opts}</select>年<select name="birth_m">{m_opts}</select>月<select name="birth_d">{d_opts}</select>日</div>
-    <label>郵便番号</label><input type="text" name="zip" value="{u.get('zip','')}" required><button type="submit">保存して次へ</button></form></div></body></html>
+    <style>
+        body{{padding:15px; font-family:sans-serif; background:#f0f4f8; margin:0;}}
+        .card{{background:white; padding:20px; border-radius:15px; width:100%; max-width:400px; margin:auto; box-shadow:0 4px 10px rgba(0,0,0,0.05);}}
+        input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:8px; font-size:16px;}}
+        .date-group{{display:flex; gap:5px; align-items:center;}}
+        button{{width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:8px; font-size:1.1rem; font-weight:bold; cursor:pointer; transition: opacity 0.3s;}}
+        button:disabled {{ background:#6c757d; opacity:0.6; cursor:not-allowed; }}
+    </style>
+    <script>
+        function handleSubmit(form) {{
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "保存中...";
+            return true;
+        }}
+    </script>
+    </head>
+    <body><div class="card">
+        <h2>📋 基本情報の入力</h2>
+        <form method="POST" onsubmit="return handleSubmit(this)">
+            <label>お名前</label><input type="text" name="name" value="{u.get('name','')}" required>
+            <label>性別</label><select name="gender" required>
+                <option value="">選択</option>
+                <option value="1" {"selected" if u.get('gender')=="1" else ""}>男性</option>
+                <option value="2" {"selected" if u.get('gender')=="2" else ""}>女性</option>
+            </select>
+            <label>生年月日</label>
+            <div class="date-group">
+                <select name="birth_y">{y_opts}</select>年
+                <select name="birth_m">{m_opts}</select>月
+                <select name="birth_d">{d_opts}</select>日
+            </div>
+            <label>郵便番号</label><input type="text" name="zip" value="{u.get('zip','')}" required>
+            <button type="submit" id="submit-btn">保存して次へ</button>
+        </form>
+    </div></body></html>
     '''
 
 @app.route('/login')
