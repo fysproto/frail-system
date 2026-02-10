@@ -13,15 +13,29 @@
         #progress-bar { position: absolute; bottom: 0; left: 0; height: 5px; background: #007bff; transition: width 0.3s; }
         #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
         #drop-zone { width: 170px; height: 170px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; font-size: 1rem; margin-bottom: 10px; }
-        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.3rem; }
+        
+        /* おはじきデザイン（平べったい円盤） */
+        .placed-ohajiki { 
+            width: 140px; height: 140px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            color: white; font-weight: bold; font-size: 1.2rem;
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.5), 0 4px 10px rgba(0,0,0,0.2), inset -2px -4px 6px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.3); position: relative;
+        }
+        .placed-ohajiki::before { content: ''; position: absolute; top: 10%; left: 10%; width: 80%; height: 80%; border-radius: 50%; border-top: 3px solid rgba(255,255,255,0.4); }
+
         #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; }
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
-        #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); visibility: hidden; pointer-events: none; }
-        .bg-blue { background: #007bff; } .bg-red { background: #dc3545; } .bg-yellow { background: #ffc107; color: #000; }
+        #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; visibility: hidden; pointer-events: none; }
+        
+        .ohajiki-blue { background: rgba(0, 123, 255, 0.85); }
+        .ohajiki-red { background: rgba(220, 53, 69, 0.85); }
+        .ohajiki-white { background: rgba(255, 255, 255, 0.95); color: #666 !important; border: 1px solid #ccc; }
+        .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
+        .bg-blue { background: #007bff; } .bg-red { background: #dc3545; }
         .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
         .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
         .input-group input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; }
-        .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
     </style>
 </head>
 <body>
@@ -55,8 +69,8 @@
 
     function setNextBtnVisible(visible) {
         const btn = document.getElementById('next-btn');
-        if (visible) { btn.style.visibility = "visible"; btn.style.pointerEvents = "auto"; } 
-        else { btn.style.visibility = "hidden"; btn.style.pointerEvents = "none"; }
+        btn.style.visibility = visible ? "visible" : "hidden";
+        btn.style.pointerEvents = visible ? "auto" : "none";
     }
 
     function render() {
@@ -115,15 +129,17 @@
             const dropZone = document.getElementById('drop-zone');
             if (elementBelow && (elementBelow === dropZone || dropZone.contains(elementBelow))) {
                 const q = questions[currentIdx];
-                let colorClass = "bg-yellow";
-                let colorKey = "yellow";
+                let colorKey = "white", colorClass = "ohajiki-white";
                 if (q.type === "logic") { 
-                    if (q.blue.includes(original.innerText)) { colorClass = "bg-blue"; colorKey = "blue"; }
-                    else { colorClass = "bg-red"; colorKey = "red"; }
+                    if (q.blue.includes(original.innerText)) { colorClass = "ohajiki-blue"; colorKey = "blue"; }
+                    else { colorClass = "ohajiki-red"; colorKey = "red"; }
+                } else if (q.id === "finger") {
+                    if (q.blue.includes(original.innerText)) { colorClass = "ohajiki-blue"; colorKey = "blue"; }
+                    else { colorClass = "ohajiki-red"; colorKey = "red"; }
                 }
-                dropZone.innerHTML = `<div class="placed-seal ${colorClass}">${original.innerText}</div>`;
+                dropZone.innerHTML = `<div class="placed-ohajiki ${colorClass}">${original.innerText}</div>`;
                 allAnswers[q.id] = original.dataset.val;
-                colorResults[q.id] = colorKey; // 色を記憶
+                colorResults[q.id] = colorKey;
                 setNextBtnVisible(true);
             }
             if (active) { active.remove(); active = null; }
@@ -156,16 +172,12 @@
             const isRed = bmi < 21.5;
             document.getElementById('dot-bmi').className = "status-dot " + (isRed ? "bg-red" : "bg-blue"); 
             colorResults['bmi'] = isRed ? "red" : "blue";
-        } else { 
-            document.getElementById('bmi-val').innerText = "-"; 
-            document.getElementById('dot-bmi').className = "status-dot"; 
-        } 
+        } else { document.getElementById('bmi-val').innerText = "-"; document.getElementById('dot-bmi').className = "status-dot"; } 
     }
 
     async function goNext() {
         if (currentIdx === questions.length - 1) {
             const btn = document.getElementById('next-btn');
-            if (btn.disabled) return; 
             btn.disabled = true; btn.innerText = "保存中..."; btn.style.opacity = "0.5"; 
             allAnswers.grip = document.getElementById('grip').value;
             allAnswers.height = document.getElementById('height').value;
@@ -174,17 +186,11 @@
 
             const response = await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
             if (response.ok) {
-                // 保存に成功したら、色データを抱えて結果ページへ遷移
                 const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/result';
+                form.method = 'POST'; form.action = '/result';
                 const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'colors';
-                input.value = JSON.stringify(colorResults);
-                form.appendChild(input);
-                document.body.appendChild(form);
-                form.submit();
+                input.type = 'hidden'; input.name = 'colors'; input.value = JSON.stringify(colorResults);
+                form.appendChild(input); document.body.appendChild(form); form.submit();
             } else { alert("保存に失敗しました。"); btn.disabled = false; btn.innerText = "次へ"; btn.style.opacity = "1"; }
         } else { currentIdx++; render(); }
     }
