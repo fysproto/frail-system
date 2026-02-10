@@ -27,8 +27,7 @@ SCOPES = [
 
 @app.route('/')
 def top():
-    if 'credentials' in session:
-        return redirect(url_for('mypage'))
+    if 'credentials' in session: return redirect(url_for('mypage'))
     return '''
     <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;}
@@ -193,6 +192,12 @@ def save():
     except Exception as e:
         print("Save Error:", str(e))
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/result', methods=['POST'])
+def result():
+    colors_json = request.form.get('colors')
+    colors = json.loads(colors_json) if colors_json else {}
+    return render_template('result.html', colors=colors)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
