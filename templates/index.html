@@ -110,7 +110,16 @@
 
     async function goNext() {
         if (currentIdx === questions.length - 1) {
-            allAnswers.grip = document.getElementById('grip').value;
+
+		// --- 二重送信防止と状態表示 ---
+		const btn = document.getElementById('next-btn');
+		if (btn.disabled) return; // 既に押されていたら何もしない
+		btn.disabled = true;       // ボタンを無効化
+		btn.innerText = "保存中..."; // 文字を変える
+		btn.style.opacity = "0.5"; // 見た目も変える
+                // --- ここまで ---
+
+	    allAnswers.grip = document.getElementById('grip').value;
             allAnswers.height = document.getElementById('height').value;
             allAnswers.weight = document.getElementById('weight').value;
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
