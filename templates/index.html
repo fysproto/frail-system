@@ -12,34 +12,16 @@
         #q-text { font-weight: bold; padding: 0 15px; font-size: 1.2rem; line-height: 1.3; }
         #progress-bar { position: absolute; bottom: 0; left: 0; height: 5px; background: #007bff; transition: width 0.3s; }
         #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
-        #drop-zone { width: 170px; height: 170px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; font-size: 1rem; margin-bottom: 10px; position: relative; }
-        
-        /* ドロップ後のおはじきスタイル */
-        .placed-ohajiki { 
-            width: 140px; height: 140px; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; 
-            color: white; font-weight: bold; font-size: 1.3rem;
-            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.2), 5px 10px 20px rgba(0,0,0,0.1);
-            position: relative;
-        }
-        .placed-ohajiki::after {
-            content: ''; position: absolute; top: 15%; left: 15%; width: 30%; height: 30%;
-            background: rgba(255,255,255,0.4); border-radius: 50%;
-        }
-
+        #drop-zone { width: 170px; height: 170px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; font-size: 1rem; margin-bottom: 10px; }
+        .placed-seal { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.3rem; }
         #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; }
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
-        
         #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); visibility: hidden; pointer-events: none; }
-        
-        /* おはじきの色 */
-        .ohajiki-blue { background: radial-gradient(circle at 30% 30%, #5fafff, #007bff); }
-        .ohajiki-red { background: radial-gradient(circle at 30% 30%, #ff5f6d, #dc3545); }
-        .ohajiki-yellow { background: radial-gradient(circle at 30% 30%, #fff05f, #ffc107); color: #000 !important; }
-
+        .bg-blue { background: #007bff; } .bg-red { background: #dc3545; } .bg-yellow { background: #ffc107; color: #000; }
         .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .input-group input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; }
         .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
-        .bg-blue { background: #007bff; } .bg-red { background: #dc3545; }
     </style>
 </head>
 <body>
@@ -133,16 +115,15 @@
             const dropZone = document.getElementById('drop-zone');
             if (elementBelow && (elementBelow === dropZone || dropZone.contains(elementBelow))) {
                 const q = questions[currentIdx];
-                let colorClass = "ohajiki-yellow";
+                let colorClass = "bg-yellow";
                 let colorKey = "yellow";
                 if (q.type === "logic") { 
-                    if (q.blue.includes(original.innerText)) { colorClass = "ohajiki-blue"; colorKey = "blue"; }
-                    else { colorClass = "ohajiki-red"; colorKey = "red"; }
+                    if (q.blue.includes(original.innerText)) { colorClass = "bg-blue"; colorKey = "blue"; }
+                    else { colorClass = "bg-red"; colorKey = "red"; }
                 }
-                // ドロップした瞬間におはじきに変身！
-                dropZone.innerHTML = `<div class="placed-ohajiki ${colorClass}">${original.innerText}</div>`;
+                dropZone.innerHTML = `<div class="placed-seal ${colorClass}">${original.innerText}</div>`;
                 allAnswers[q.id] = original.dataset.val;
-                colorResults[q.id] = colorKey;
+                colorResults[q.id] = colorKey; // 色を記憶
                 setNextBtnVisible(true);
             }
             if (active) { active.remove(); active = null; }
@@ -193,6 +174,7 @@
 
             const response = await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
             if (response.ok) {
+                // 保存に成功したら、色データを抱えて結果ページへ遷移
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '/result';
