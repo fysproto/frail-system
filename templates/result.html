@@ -32,14 +32,27 @@
     </div>
 
     <table>
-        <thead><tr><th>項目</th><th>質問 / 測定内容</th><th>あなたの回答</th><th>判定</th></tr></thead>
+        <thead><tr><th>No.</th><th>質問 / 測定内容</th><th>あなたの回答</th><th>判定</th></tr></thead>
         <tbody>
             <tr><td>計測</td><td>指輪っかテスト</td><td>{{ answers.finger }}</td><td><span class="dot {{ colors.finger }}"></span></td></tr>
-            <tr><td>計測</td><td>握力 / BMI</td><td>{{ answers.grip }}kg / {{ answers.bmi }}</td><td><span class="dot {{ colors.grip }}"></span></td></tr>
-            <tr><td>Q1</td><td>健康状態</td><td>{{ answers.q1 }}</td><td><span class="dot white"></span></td></tr>
-            <tr><td>Q3</td><td>1日3食</td><td>{{ answers.q3 }}</td><td><span class="dot {{ colors.q3 }}"></span></td></tr>
-            <tr><td>Q7</td><td>歩行速度</td><td>{{ answers.q7 }}</td><td><span class="dot {{ colors.q7 }}"></span></td></tr>
-            </tbody>
+            <tr><td>計測</td><td>握力 (kg)</td><td>{{ answers.grip }}</td><td><span class="dot {{ colors.grip }}"></span></td></tr>
+            <tr><td>計測</td><td>BMI</td><td>{{ answers.bmi }}</td><td><span class="dot {{ colors.bmi }}"></span></td></tr>
+            <tr><td>1</td><td>現在の健康状態</td><td>{{ answers.q1 }}</td><td><span class="dot white"></span></td></tr>
+            <tr><td>2</td><td>生活の満足度</td><td>{{ answers.q2 }}</td><td><span class="dot white"></span></td></tr>
+            <tr><td>3</td><td>1日3食きちんと食べている</td><td>{{ answers.q3 }}</td><td><span class="dot {{ colors.q3 }}"></span></td></tr>
+            <tr><td>4</td><td>固いものが食べにくくなった</td><td>{{ answers.q4 }}</td><td><span class="dot {{ colors.q4 }}"></span></td></tr>
+            <tr><td>5</td><td>お茶や汁物でむせることがある</td><td>{{ answers.q5 }}</td><td><span class="dot {{ colors.q5 }}"></span></td></tr>
+            <tr><td>6</td><td>半年で2~3kg以上の体重減少</td><td>{{ answers.q6 }}</td><td><span class="dot {{ colors.q6 }}"></span></td></tr>
+            <tr><td>7</td><td>歩く速度が遅くなってきた</td><td>{{ answers.q7 }}</td><td><span class="dot {{ colors.q7 }}"></span></td></tr>
+            <tr><td>8</td><td>この1年間に転んだことがある</td><td>{{ answers.q8 }}</td><td><span class="dot {{ colors.q8 }}"></span></td></tr>
+            <tr><td>9</td><td>週1回以上の運動をしている</td><td>{{ answers.q9 }}</td><td><span class="dot {{ colors.q9 }}"></span></td></tr>
+            <tr><td>10</td><td>もの忘れがあると言われている</td><td>{{ answers.q10 }}</td><td><span class="dot {{ colors.q10 }}"></span></td></tr>
+            <tr><td>11</td><td>今日の日付がわからない時がある</td><td>{{ answers.q11 }}</td><td><span class="dot {{ colors.q11 }}"></span></td></tr>
+            <tr><td>12</td><td>たばこを吸う</td><td>{{ answers.q12 }}</td><td><span class="dot white"></span></td></tr>
+            <tr><td>13</td><td>週に1回以上は外出している</td><td>{{ answers.q13 }}</td><td><span class="dot {{ colors.q13 }}"></span></td></tr>
+            <tr><td>14</td><td>家族や友人と付き合いがある</td><td>{{ answers.q14 }}</td><td><span class="dot {{ colors.q14 }}"></span></td></tr>
+            <tr><td>15</td><td>体調が悪い時に相談できる人がいる</td><td>{{ answers.q15 }}</td><td><span class="dot {{ colors.q15 }}"></span></td></tr>
+        </tbody>
     </table>
 </body>
 </html>

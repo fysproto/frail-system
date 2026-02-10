@@ -3,114 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>フレイル判定</title>
     <style>
-        html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; }
+        html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; touch-action: none; font-family: sans-serif; margin: 0; background: #f0f4f8; font-size: 18px; }
         #app { display: flex; flex-direction: column; height: 100%; }
         header { height: 80px; background: #fff; text-align: center; border-bottom: 2px solid #dee2e6; display: flex; flex-direction: column; justify-content: center; position: relative; }
-        #q-text { font-weight: bold; padding: 0 15px; font-size: 1.2rem; }
+        #q-no { font-size: 0.9rem; color: #6c757d; }
+        #q-text { font-weight: bold; padding: 0 15px; font-size: 1.2rem; line-height: 1.3; }
         #progress-bar { position: absolute; bottom: 0; left: 0; height: 5px; background: #007bff; transition: width 0.3s; }
-        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #drop-zone { width: 170px; height: 170px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; margin-bottom: 10px; }
-        .placed-ohajiki { width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; box-shadow: inset 0 0 15px rgba(255,255,255,0.5), 0 4px 10px rgba(0,0,0,0.2); }
-        .ohajiki-blue { background: #007bff; } .ohajiki-red { background: #dc3545; } .ohajiki-white { background: #fff; color: #333 !important; border: 1px solid #ccc; }
-        #options { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; padding: 10px; }
-        .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #main-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
+        #drop-zone { width: 170px; height: 170px; border: 4px dashed #adb5bd; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #adb5bd; text-align: center; font-size: 1rem; margin-bottom: 10px; }
+        .placed-ohajiki { width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem; box-shadow: inset 0 0 15px rgba(255,255,255,0.5), 0 4px 10px rgba(0,0,0,0.2); position: relative; }
+        #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; }
+        .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
         #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; visibility: hidden; }
-        .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 300px; }
-        .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-left: 5px; }
+        .ohajiki-blue { background: #007bff; } .ohajiki-red { background: #dc3545; } .ohajiki-white { background: #fff; color: #666 !important; border: 1px solid #ccc; }
+        .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; }
+        .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
+        .input-group input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 <div id="app">
     <header><div id="q-no"></div><div id="q-text"></div><div id="progress-bar"></div></header>
-    <div id="main-stage"><div id="drop-zone">ここにドロップ</div><div id="options"></div><button id="next-btn" onclick="goNext()">次へ</button></div>
+    <div id="main-stage"><div id="drop-zone">ここにシールをドラッグ</div><div id="options"></div><button id="next-btn" onclick="goNext()">次へ</button></div>
 </div>
 <script>
     const gender = "{{ gender|safe }}" || "1";
     const questions = [
-        { id: "finger", text: "指輪っかテスト", opts: ["囲めない", "ちょうど", "隙間ができる"], type: "logic", blue: ["囲めない", "ちょうど"], red: ["隙間ができる"] },
-        { id: "q1", text: "Q1. 現在の健康状態は？", opts: ["よい", "まあよい", "ふつう", "あまりよくない", "よくない"], type: "special" },
-        { id: "q3", text: "Q3. 1日3食食べていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
-        { id: "q7", text: "Q7. 歩く速度が遅くなった？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
-        { id: "calc", text: "身体計測", type: "calc" }
-    ]; // ※実際には15問すべて定義
+        { id: "finger", no: "計測", text: "指輪っかテスト", opts: ["囲めない", "ちょうど", "隙間ができる"], type: "logic", blue: ["囲めない", "ちょうど"], red: ["隙間ができる"] },
+        { id: "q1", no: "1", text: "現在の健康状態はいかがですか？", opts: ["よい", "まあよい", "ふつう", "あまりよくない", "よくない"], type: "special" },
+        { id: "q2", no: "2", text: "毎日の生活に満足していますか？", opts: ["満足", "やや満足", "やや不満", "不満"], type: "special" },
+        { id: "q3", no: "3", text: "1日3食きちんと食べていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "q4", no: "4", text: "固いものが食べにくくなりましたか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q5", no: "5", text: "お茶や汁物でむせることがありますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q6", no: "6", text: "半年で2~3kg以上の体重減少がありましたか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q7", no: "7", text: "歩く速度が遅くなってきたと思いますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q8", no: "8", text: "この1年間に転んだことがありますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q9", no: "9", text: "週1回以上の運動をしていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "q10", no: "10", text: "もの忘れがあると言われていますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q11", no: "11", text: "今日の日付がわからない時がありますか？", opts: ["いいえ", "はい"], type: "logic", blue: ["いいえ"], red: ["はい"] },
+        { id: "q12", no: "12", text: "あなたはたばこを吸いますか？", opts: ["吸わない", "やめた", "吸っている"], type: "special" },
+        { id: "q13", no: "13", text: "週に1回以上は外出していますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "q14", no: "14", text: "家族や友人と付き合いがありますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "q15", no: "15", text: "体調が悪い時に相談できる人がいますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
+        { id: "calc", no: "計測", text: "身体計測（握力・BMI）", type: "calc" }
+    ];
 
     let currentIdx = 0, allAnswers = {}, colorResults = {}, active = null;
 
     function render() {
         const q = questions[currentIdx];
+        document.getElementById('q-no').innerText = q.no !== "計測" ? `質問 ${q.no} / 15` : "計測項目";
         document.getElementById('q-text').innerText = q.text;
-        document.getElementById('progress-bar').style.width = `${((currentIdx+1)/questions.length)*100}%`;
+        document.getElementById('progress-bar').style.width = `${(currentIdx / questions.length) * 100}%`;
         const dropZone = document.getElementById('drop-zone');
-        const optsDiv = document.getElementById('options');
-        const nextBtn = document.getElementById('next-btn');
-        
-        dropZone.innerHTML = "ここにドロップ";
+        dropZone.innerHTML = "ここにシールをドラッグ";
         dropZone.style.display = q.type === "calc" ? "none" : "flex";
-        nextBtn.style.visibility = q.type === "calc" ? "visible" : "hidden";
+        document.getElementById('next-btn').style.visibility = q.type === "calc" ? "visible" : "hidden";
+        const optsDiv = document.getElementById('options');
         optsDiv.innerHTML = "";
-
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="number" id="grip" oninput="judgeCalc()" step="0.1" style="width:100%; padding:10px; margin-bottom:10px;">
-                <label>身長 (cm)</label><input type="number" id="height" oninput="judgeCalc()" style="width:100%; padding:10px; margin-bottom:10px;">
-                <label>体重 (kg)</label><input type="number" id="weight" oninput="judgeCalc()" style="width:100%; padding:10px; margin-bottom:10px;">
+                <input type="text" id="grip" inputmode="decimal" oninput="formatAutoDecimal(this, 0, 99.9)">
+                <label>身長 (cm)</label><input type="text" id="height" inputmode="decimal" oninput="formatAutoDecimal(this, 100, 200)">
+                <label>体重 (kg)</label><input type="text" id="weight" inputmode="decimal" oninput="formatAutoDecimal(this, 20, 200)">
                 <div>BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
             </div>`;
         } else {
             q.opts.forEach(opt => {
                 const el = document.createElement('div'); el.className = 'seal'; el.innerText = opt;
-                el.ontouchstart = (e) => dragStart(e, el, opt, q);
+                el.addEventListener('touchstart', (e) => dragStart(e, el, opt, q), { passive: false });
                 optsDiv.appendChild(el);
             });
         }
     }
 
-    function judgeCalc() {
-        const grip = parseFloat(document.getElementById('grip').value);
+    function formatAutoDecimal(el, min, max) {
+        let v = el.value.replace(/\D/g, ""); if (!v) return;
+        let num = (parseFloat(v) / 10).toFixed(1); el.value = num;
+        if (el.id === 'grip') judgeGrip(); calcBMI();
+    }
+
+    function dragStart(e, original, opt, q) {
+        active = original.cloneNode(true); active.style.position = 'fixed'; active.style.zIndex = 1000; document.body.appendChild(active);
+        const move = (ev) => { active.style.left = (ev.touches[0].clientX - 40) + 'px'; active.style.top = (ev.touches[0].clientY - 40) + 'px'; };
+        const end = (ev) => {
+            const rect = document.getElementById('drop-zone').getBoundingClientRect();
+            const t = ev.changedTouches[0];
+            if (t.clientX > rect.left && t.clientX < rect.right && t.clientY > rect.top && t.clientY < rect.bottom) {
+                let colorKey = "white", colorClass = "ohajiki-white";
+                if (q.type === "logic") {
+                    colorKey = q.blue.includes(opt) ? "blue" : "red";
+                    colorClass = colorKey === "blue" ? "ohajiki-blue" : "ohajiki-red";
+                }
+                document.getElementById('drop-zone').innerHTML = `<div class="placed-ohajiki ${colorClass}">${opt}</div>`;
+                allAnswers[q.id] = opt; colorResults[q.id] = colorKey;
+                document.getElementById('next-btn').style.visibility = "visible";
+            }
+            active.remove(); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', end);
+        };
+        document.addEventListener('touchmove', move, { passive: false }); document.addEventListener('touchend', end);
+    }
+
+    function judgeGrip() {
+        const val = parseFloat(document.getElementById('grip').value);
+        const threshold = (gender === "1") ? 28.1 : 18.1;
+        const isRed = val < threshold;
+        document.getElementById('dot-grip').className = "status-dot " + (isRed ? "bg-red" : "bg-blue");
+        colorResults['grip'] = isRed ? "red" : "blue";
+    }
+
+    function calcBMI() {
         const h = parseFloat(document.getElementById('height').value)/100, w = parseFloat(document.getElementById('weight').value);
-        if (grip) {
-            const isRed = (gender === "1") ? grip < 28 : grip < 18;
-            document.getElementById('dot-grip').className = "status-dot " + (isRed ? "bg-red" : "bg-blue");
-            colorResults['grip'] = isRed ? "red" : "blue";
-        }
         if (h > 0 && w > 0) {
             const bmi = (w / (h * h)).toFixed(1);
             document.getElementById('bmi-val').innerText = bmi;
             const isRed = bmi < 21.5;
             document.getElementById('dot-bmi').className = "status-dot " + (isRed ? "bg-red" : "bg-blue");
             colorResults['bmi'] = isRed ? "red" : "blue";
-            allAnswers.bmi = bmi;
         }
-    }
-
-    function dragStart(e, original, opt, q) {
-        active = original.cloneNode(true); active.style.position = 'fixed'; active.style.zIndex = 1000; document.body.appendChild(active);
-        const move = (ev) => { active.style.left = (ev.touches[0].clientX - 45)+'px'; active.style.top = (ev.touches[0].clientY - 45)+'px'; };
-        const end = (ev) => {
-            const t = ev.changedTouches[0]; const rect = document.getElementById('drop-zone').getBoundingClientRect();
-            if (t.clientX > rect.left && t.clientX < rect.right && t.clientY > rect.top && t.clientY < rect.bottom) {
-                let ck = "white", cClass = "ohajiki-white";
-                if (q.type === "logic") {
-                    ck = q.blue.includes(opt) ? "blue" : "red";
-                    cClass = ck === "blue" ? "ohajiki-blue" : "ohajiki-red";
-                }
-                document.getElementById('drop-zone').innerHTML = `<div class="placed-ohajiki ${cClass}">${opt}</div>`;
-                allAnswers[q.id] = opt; colorResults[q.id] = ck;
-                document.getElementById('next-btn').style.visibility = "visible";
-            }
-            active.remove(); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', end);
-        };
-        document.addEventListener('touchmove', move); document.addEventListener('touchend', end);
     }
 
     async function goNext() {
         if (currentIdx === questions.length - 1) {
             allAnswers.grip = document.getElementById('grip').value;
-            allAnswers.height = document.getElementById('height').value;
-            allAnswers.weight = document.getElementById('weight').value;
+            allAnswers.bmi = document.getElementById('bmi-val').innerText;
             await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
             const form = document.createElement('form'); form.method = 'POST'; form.action = '/result';
             const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
