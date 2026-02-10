@@ -19,6 +19,7 @@ CLIENT_CONFIG = {
         "redirect_uris": ["https://frail-system.onrender.com/callback"]
     }
 }
+
 # 隠しフォルダ(appDataFolder)へのアクセス権限を追加
 SCOPES = [
     'https://www.googleapis.com/auth/drive.file',
@@ -72,36 +73,31 @@ def profile():
         }
         session['user_info'] = user_info
         
-        # Google Driveの隠しフォルダにプロフィールを保存
         try:
             creds = Credentials(**session['credentials'])
             service = build('drive', 'v3', credentials=creds)
-            
-            # 既存のプロフィールファイルがないか確認
             q = "name = 'profile_data.json' and trashed = false"
             files = service.files().list(q=q, spaces='appDataFolder').execute().get('files', [])
-            
             content = json.dumps(user_info, ensure_ascii=False)
             media = MediaInMemoryUpload(content.encode('utf-8'), mimetype='application/json')
-            
             if files:
-                # 更新
                 service.files().update(fileId=files[0]['id'], media_body=media).execute()
             else:
-                # 新規作成（隠しフォルダ appDataFolder を指定）
                 file_metadata = {'name': 'profile_data.json', 'parents': ['appDataFolder']}
                 service.files().create(body=file_metadata, media_body=media).execute()
         except Exception as e:
             print(f"Profile Save Error: {e}")
-
         return redirect(url_for('mypage'))
 
-    # 初期値（修正時に元の値を入れるため）
     u = session.get('user_info', {})
+    b_parts = u.get("birth", "").split("-")
+    cur_y = b_parts[0] if len(b_parts) > 0 else "1955"
+    cur_m = b_parts[1] if len(b_parts) > 1 else "1"
+    cur_d = b_parts[2] if len(b_parts) > 2 else "1"
     
-    y_opts = "".join([f'<option value="{y}" {"selected" if str(y)==u.get("birth","").split("-")[0] or (not u and y==1955) else ""}>{y}</option>' for y in range(1930, 2011)])
-    m_opts = "".join([f'<option value="{m}" {"selected" if str(m)==u.get("birth","").split("-")[1] if "-" in u.get("birth","") else False else ""}>{m}</option>' for m in range(1, 13)])
-    d_opts = "".join([f'<option value="{d}" {"selected" if str(d)==u.get("birth","").split("-")[2] if "-" in u.get("birth","") else False else ""}>{d}</option>' for d in range(1, 32)])
+    y_opts = "".join([f'<option value="{y}" {"selected" if str(y)==cur_y else ""}>{y}</option>' for y in range(1930, 2011)])
+    m_opts = "".join([f'<option value="{m}" {"selected" if str(m)==cur_m else ""}>{m}</option>' for m in range(1, 13)])
+    d_opts = "".join([f'<option value="{d}" {"selected" if str(d)==cur_d else ""}>{d}</option>' for d in range(1, 32)])
 
     return f'''
     <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -134,20 +130,16 @@ def callback():
     creds = flow.credentials
     session['credentials'] = {'token': creds.token, 'refresh_token': creds.refresh_token, 'token_uri': creds.token_uri, 'client_id': creds.client_id, 'client_secret': creds.client_secret, 'scopes': creds.scopes}
     
-    # ログイン直後に隠しフォルダからプロフィールを検索
     try:
         service = build('drive', 'v3', credentials=creds)
         q = "name = 'profile_data.json' and trashed = false"
         files = service.files().list(q=q, spaces='appDataFolder').execute().get('files', [])
-        
         if files:
-            # 既にデータがあれば読み込んでマイページへ
             content = service.files().get_media(fileId=files[0]['id']).execute()
             session['user_info'] = json.loads(content.decode('utf-8'))
             return redirect(url_for('mypage'))
     except Exception as e:
         print(f"Callback Profile Fetch Error: {e}")
-        
     return redirect(url_for('profile'))
 
 @app.route('/logout')
@@ -186,7 +178,6 @@ def save():
         folder_id = None
         q_folder = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
         folders = service.files().list(q=q_folder).execute().get('files', [])
-        
         if folders:
             folder_id = folders[0]['id']
         else:
