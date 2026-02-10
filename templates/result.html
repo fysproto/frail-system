@@ -1,59 +1,101 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>測定結果</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>測定結果レポート</title>
     <style>
-        body { font-family: sans-serif; background: #f0f4f8; margin: 0; padding: 20px; text-align: center; color: #333; }
-        .ohajiki-area { background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .ohajiki-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 20px 0; }
+        body { font-family: sans-serif; background: #f0f4f8; padding: 20px; color: #333; }
+        .no-print { text-align: center; margin-bottom: 20px; }
+        .report-paper { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
+        h2 { text-align: center; color: #2c3e50; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
+        .user-info { display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: bold; background: #eee; padding: 10px; }
         
-        .ohajiki {
-            width: 48px; height: 48px; border-radius: 50%; display: inline-block;
-            box-shadow: inset 0 0 10px rgba(255,255,255,0.5), 0 3px 6px rgba(0,0,0,0.15);
-            border: 1px solid rgba(255,255,255,0.2); position: relative;
+        .ohajiki-box { text-align: center; margin: 20px 0; border: 2px solid #ddd; padding: 15px; border-radius: 15px; }
+        .ohajiki-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+        .ohajiki { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 5px rgba(255,255,255,0.5); border: 1px solid #ccc; }
+        .blue { background: #007bff; } .red { background: #dc3545; } .white { background: #fff; }
+
+        .category-box { border: 2px solid #28a745; border-radius: 10px; margin-bottom: 15px; overflow: hidden; }
+        .category-title { background: #28a745; color: white; padding: 8px 15px; font-weight: bold; }
+        .item-row { display: flex; justify-content: space-between; padding: 8px 15px; border-bottom: 1px solid #eee; align-items: center; }
+        .item-row:last-child { border-bottom: none; }
+        .ans-text { font-weight: bold; color: #555; }
+        .judge-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 10px; }
+
+        .btn-print { padding: 15px 30px; background: #007bff; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        .btn-home { padding: 15px 30px; background: #6c757d; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; display: inline-block; margin-left: 10px; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .no-print { display: none; }
+            .report-paper { box-shadow: none; border: none; width: 100%; max-width: none; }
+            .ohajiki { -webkit-print-color-adjust: exact; }
+            .blue { background-color: #007bff !important; } .red { background-color: #dc3545 !important; }
         }
-        .ohajiki::before { content: ''; position: absolute; top: 10%; left: 10%; width: 80%; height: 80%; border-radius: 50%; border-top: 2px solid rgba(255,255,255,0.4); }
-
-        .red { background: rgba(220, 53, 69, 0.85); }
-        .blue { background: rgba(0, 123, 255, 0.85); }
-        .white { background: rgba(255, 255, 255, 0.95); border: 1px solid #ddd; }
-
-        .category-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; text-align: left; }
-        .category-title { font-weight: bold; border-left: 5px solid #28a745; padding-left: 10px; margin-bottom: 10px; color: #28a745; }
-        .item-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
-        .btn-home { display: inline-block; padding: 15px 40px; background: #007bff; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <h2>お疲れ様でした！</h2>
-    <div class="ohajiki-area">
-        <p>今日のおはじきを数えてみましょう</p>
+
+<div class="no-print">
+    <button class="btn-print" onclick="window.print()">この結果を印刷・PDF保存する</button>
+    <a href="/mypage" class="btn-home">マイページへ戻る</a>
+</div>
+
+<div class="report-paper">
+    <h2>フレイルチェック測定結果報告書</h2>
+    
+    <div class="user-info">
+        <span>氏名: {{ user.name }} 様</span>
+        <span>測定日: {{ date }}</span>
+    </div>
+
+    <div class="ohajiki-box">
+        <strong>今日のおはじき（色だま）</strong>
         <div class="ohajiki-container">
             {% for id, color in colors.items() %}
-                <div class="ohajiki {{ color }}"></div>
+            <div class="ohajiki {{ color }}"></div>
             {% endfor %}
         </div>
-        <p style="font-size: 0.8rem; color: #999;">※赤いおはじきは「のびしろ」のサインです</p>
+        <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">青：ばっちり / 赤：のびしろ / 白：現状確認</p>
     </div>
 
-    <div class="category-card">
-        <div class="category-title">筋肉のちから（運動）</div>
-        <div class="item-row">指輪っかテスト <span class="dot {{ colors.get('finger','white') }}"></span></div>
-        <div class="item-row">BMI（体格） <span class="dot {{ colors.get('bmi','white') }}"></span></div>
-        <div class="item-row">握力 <span class="dot {{ colors.get('grip','white') }}"></span></div>
-        <div class="item-row">Q7〜9 運動項目 <span class="dot {{ colors.get('q7','white') }}"></span></div>
+    <div class="category-box">
+        <div class="category-title">筋肉のちから（運動器）</div>
+        <div class="item-row">指輪っかテスト <span class="ans-text">{{ answers.finger }} <span class="judge-dot {{ colors.finger }}"></span></span></div>
+        <div class="item-row">握力・BMI <span class="ans-text">{{ answers.grip }}kg / BMI {{ answers.bmi }} <span class="judge-dot {{ colors.bmi }}"></span></span></div>
+        <div class="item-row">Q7. 歩く速度 <span class="ans-text">{{ answers.q7 }} <span class="judge-dot {{ colors.q7 }}"></span></span></div>
+        <div class="item-row">Q8. 転倒の不安 <span class="ans-text">{{ answers.q8 }} <span class="judge-dot {{ colors.q8 }}"></span></span></div>
+        <div class="item-row">Q9. 運動習慣 <span class="ans-text">{{ answers.q9 }} <span class="judge-dot {{ colors.q9 }}"></span></span></div>
     </div>
 
-    <div class="category-card" style="background: #f8f9fa; border: 1px dashed #adb5bd;">
-        <div class="category-title" style="color: #6c757d; border-left-color: #adb5bd;">保健師さんとの確認用</div>
-        <div class="item-row">Q1 健康状態 <span class="dot white"></span></div>
-        <div class="item-row">Q2 生活の満足度 <span class="dot white"></span></div>
-        <div class="item-row">Q12 たばこの習慣 <span class="dot white"></span></div>
+    <div class="category-box">
+        <div class="category-title">お食事のようす（栄養・口腔）</div>
+        <div class="item-row">Q3. 1日3食の食事 <span class="ans-text">{{ answers.q3 }} <span class="judge-dot {{ colors.q3 }}"></span></span></div>
+        <div class="item-row">Q4. 噛む力 <span class="ans-text">{{ answers.q4 }} <span class="judge-dot {{ colors.q4 }}"></span></span></div>
+        <div class="item-row">Q5. むせやすさ <span class="ans-text">{{ answers.q5 }} <span class="judge-dot {{ colors.q5 }}"></span></span></div>
+        <div class="item-row">Q6. 体重の変化 <span class="ans-text">{{ answers.q6 }} <span class="judge-dot {{ colors.q6 }}"></span></span></div>
     </div>
 
-    <a href="/mypage" class="btn-home">マイページへ戻る</a>
+    <div class="category-box">
+        <div class="category-title">社会とのつながり（社会参加）</div>
+        <div class="item-row">Q13. 外出の頻度 <span class="ans-text">{{ answers.q13 }} <span class="judge-dot {{ colors.q13 }}"></span></span></div>
+        <div class="item-row">Q14. 友人との交流 <span class="ans-text">{{ answers.q14 }} <span class="judge-dot {{ colors.q14 }}"></span></span></div>
+        <div class="item-row">Q15. 相談できる人 <span class="ans-text">{{ answers.q15 }} <span class="judge-dot {{ colors.q15 }}"></span></span></div>
+    </div>
+
+    <div class="category-box" style="border-color: #6c757d;">
+        <div class="category-title" style="background: #6c757d;">生活リズム（心と認知）</div>
+        <div class="item-row">Q10. 物忘れの不安 <span class="ans-text">{{ answers.q10 }} <span class="judge-dot {{ colors.q10 }}"></span></span></div>
+        <div class="item-row">Q11. 今日のみちしるべ <span class="ans-text">{{ answers.q11 }} <span class="judge-dot {{ colors.q11 }}"></span></span></div>
+    </div>
+
+    <div class="category-box" style="border-color: #000; border-style: dashed;">
+        <div class="category-title" style="background: #333;">専門職（保健師）との確認事項</div>
+        <div class="item-row">Q1. 健康状態 <span class="ans-text">{{ answers.q1 }} <span class="judge-dot white"></span></span></div>
+        <div class="item-row">Q2. 生活満足度 <span class="ans-text">{{ answers.q2 }} <span class="judge-dot white"></span></span></div>
+        <div class="item-row">Q12. たばこの習慣 <span class="ans-text">{{ answers.q12 }} <span class="judge-dot white"></span></span></div>
+    </div>
+</div>
+
 </body>
 </html>
