@@ -10,7 +10,6 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "frail_app_key_2026_final"
 
-# Google OAuth 設定
 CLIENT_CONFIG = {
     "web": {
         "client_id": "734131799600-cn8qec6q6dqh24v93bf4ubabb0gtjm5d.apps.googleusercontent.com",
@@ -65,7 +64,6 @@ def mypage():
     <a href="/logout" style="color:red; display:block; margin-top:20px;">ログアウト</a>
     </div></body></html>'''
 
-# --- 修正点：同意画面をインラインで表示 ---
 @app.route('/measure')
 def measure():
     if 'credentials' not in session: return redirect(url_for('top'))
@@ -78,13 +76,13 @@ def measure():
     <p>測定結果はご自身のGoogleドライブに保存されます。内容を確認し同意して開始してください。</p>
     <div class="box">【同意事項】<br>・収集したデータはフレイル判定のみに使用します。<br>・結果は個人の参考用です。<br>・データはご自身のGoogleドライブ「fraildata」フォルダに保存されます。</div>
     <a href="/start_test" class="btn-start">同意して測定を開始する</a>
+    <p style="text-align:center;"><a href="/mypage" style="color:#666; font-size:0.8rem;">マイページへ戻る</a></p>
     </div></body></html>'''
 
 @app.route('/start_test')
 def start_test():
     if 'credentials' not in session: return redirect(url_for('top'))
     return render_template('index.html', gender=session['user_info'].get('gender', '1'))
-# -------------------------------------
 
 @app.route('/save', methods=['POST'])
 def save():
@@ -108,7 +106,6 @@ def result():
     colors = json.loads(request.form.get('colors', '{}'))
     user = session.get('user_info', {})
     
-    # リスク数に応じた判定ロジック
     red_count = sum(1 for c in colors.values() if c == 'red')
     if red_count >= 3:
         status, status_color = "フレイル", "#dc3545"
@@ -117,13 +114,19 @@ def result():
     else:
         status, status_color = "健常（堅健）", "#28a745"
 
-    return render_template('result.html', 
-                           answers=answers, 
-                           colors=colors, 
-                           user=user, 
-                           status=status, 
-                           status_color=status_color, 
-                           date=datetime.now().strftime('%Y/%m/%d'))
+    session['report_data'] = {
+        'answers': answers, 'colors': colors, 
+        'status': status, 'status_color': status_color, 
+        'date': datetime.now().strftime('%Y/%m/%d %H:%M')
+    }
+    return render_template('result.html', answers=answers, colors=colors, user=user, status=status, status_color=status_color)
+
+@app.route('/report')
+def report():
+    if 'credentials' not in session: return redirect(url_for('top'))
+    data = session.get('report_data')
+    if not data: return redirect(url_for('mypage'))
+    return render_template('report.html', **data)
 
 @app.route('/logout')
 def logout():
