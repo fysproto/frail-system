@@ -106,20 +106,12 @@ def result():
     colors = json.loads(request.form.get('colors', '{}'))
     user = session.get('user_info', {})
     
-    red_count = sum(1 for c in colors.values() if c == 'red')
-    if red_count >= 3:
-        status, status_color = "フレイル", "#dc3545"
-    elif red_count >= 1:
-        status, status_color = "プレフレイル", "#ffc107"
-    else:
-        status, status_color = "健常（堅健）", "#28a745"
-
     session['report_data'] = {
-        'answers': answers, 'colors': colors, 
-        'status': status, 'status_color': status_color, 
+        'answers': answers, 
+        'colors': colors, 
         'date': datetime.now().strftime('%Y/%m/%d %H:%M')
     }
-    return render_template('result.html', answers=answers, colors=colors, user=user, status=status, status_color=status_color)
+    return render_template('result.html', answers=answers, colors=colors, user=user)
 
 @app.route('/report')
 def report():
