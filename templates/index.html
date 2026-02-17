@@ -80,7 +80,6 @@
                 <div>BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
             </div>`;
         } else {
-            // opts の順番をそのまま維持して表示（バイアス防止）
             q.opts.forEach(opt => {
                 const el = document.createElement('div'); el.className = 'seal'; el.innerText = opt;
                 el.addEventListener('touchstart', (e) => dragStart(e, el, opt, q), { passive: false });
@@ -103,17 +102,14 @@
             const t = ev.changedTouches[0];
             if (t.clientX > rect.left && t.clientX < rect.right && t.clientY > rect.top && t.clientY < rect.bottom) {
                 let colorKey = "white", colorClass = "ohajiki-white";
-                
                 if (q.type === "logic") {
                     colorKey = q.blue.includes(opt) ? "blue" : "red";
                     colorClass = colorKey === "blue" ? "ohajiki-blue" : "ohajiki-red";
                 } else if (q.type === "special") {
-                    // Q1, Q2, Q12 の特殊判定: 青回答なら白、赤回答なら黄色
                     const isRed = q.red.includes(opt);
                     colorKey = isRed ? "yellow" : "white";
                     colorClass = isRed ? "ohajiki-yellow" : "ohajiki-white";
                 }
-
                 document.getElementById('drop-zone').innerHTML = `<div class="placed-ohajiki ${colorClass}">${opt}</div>`;
                 allAnswers[q.id] = opt; colorResults[q.id] = colorKey;
                 document.getElementById('next-btn').style.visibility = "visible";
@@ -145,30 +141,16 @@
     async function goNext() {
         const btn = document.getElementById('next-btn');
         if (currentIdx === questions.length - 1) {
-            // 保存中はボタンを無効化して「2回押し」を防ぐ
-            btn.disabled = true;
-            btn.innerText = "保存中...";
-
+            btn.disabled = true; btn.innerText = "保存中...";
             allAnswers.grip = document.getElementById('grip').value || "0.0";
             allAnswers.bmi = document.getElementById('bmi-val').innerText || "0.0";
-            
             try {
-                // 保存完了を待ってから確実に遷移
-                await fetch('/save', { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(allAnswers) 
-                });
-                
+                await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
                 const form = document.createElement('form'); form.method = 'POST'; form.action = '/result';
                 const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
                 const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
                 form.append(iA, iC); document.body.appendChild(form); form.submit();
-            } catch (e) {
-                console.error("Save error:", e);
-                btn.disabled = false;
-                btn.innerText = "再試行";
-            }
+            } catch (e) { btn.disabled = false; btn.innerText = "再試行"; }
         } else { currentIdx++; render(); }
     }
     render();
