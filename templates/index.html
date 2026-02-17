@@ -27,7 +27,7 @@
         .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; }
         .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
-        .input-group input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; }
+        .input-group input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 1.3rem; text-align: right; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -78,11 +78,11 @@
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" placeholder="250 と打つと 25.0" onblur="formatToDecimal(this)">
+                <input type="text" id="grip" inputmode="decimal" placeholder="0.0" oninput="handleKeyStroke(this)" onblur="finalizeInput(this)">
                 <label>身長 (cm)</label>
-                <input type="text" id="height" inputmode="decimal" placeholder="1705 と打つと 170.5" onblur="formatToDecimal(this)">
+                <input type="text" id="height" inputmode="decimal" placeholder="000.0" oninput="handleKeyStroke(this)" onblur="finalizeInput(this)">
                 <label>体重 (kg)</label>
-                <input type="text" id="weight" inputmode="decimal" placeholder="605 と打つと 60.5" onblur="formatToDecimal(this)">
+                <input type="text" id="weight" inputmode="decimal" placeholder="00.0" oninput="handleKeyStroke(this)" onblur="finalizeInput(this)">
                 <div style="margin-top:10px; font-weight:bold; border-top:1px solid #eee; padding-top:10px;">
                     BMI: <span id="bmi-val" style="font-size:1.4rem; color:#007bff;">-</span> 
                     <span id="dot-bmi" class="status-dot"></span>
@@ -97,30 +97,39 @@
         }
     }
 
-    function formatToDecimal(el) {
-        let v = el.value.replace(/\D/g, ""); if (!v) return;
-        let num = (el.id === 'height') ? (v.length <= 3 ? parseFloat(v) : parseFloat(v) / 10) : (v.length <= 2 ? parseFloat(v) : parseFloat(v) / 10);
+    // 入力中の「小数点移動」制御
+    function handleKeyStroke(el) {
+        let v = el.value.replace(/\D/g, ""); // 数字以外消す
+        if (!v) { el.value = ""; return; }
+        // 常に最後から2番目に小数点を入れる動き
+        let num = parseFloat(v) / 10;
+        el.value = num.toFixed(1);
+        calcBMI();
+    }
 
-        let isValid = true;
-        let msg = "";
-        if (el.id === 'height') {
-            if (num < 50 || num > 250) { isValid = false; msg = "身長の値（50〜250）が正しくありません。"; }
-            else if (v.length < 3) { isValid = false; msg = "身長は3桁以上（170など）で入力してください。"; }
-        } else if (el.id === 'weight') {
-            if (num <= 10 || num > 200) { isValid = false; msg = "体重の値（10〜200）が正しくありません。"; }
-            else if (v.length < 2) { isValid = false; msg = "体重は2桁以上（60など）で入力してください。"; }
-        } else if (el.id === 'grip') {
-            if (num < 5 || num > 100) { isValid = false; msg = "握力の値（5〜100）が正しくありません。"; }
+    // 確定時の「自動補正」ロジック
+    function finalizeInput(el) {
+        let v = el.value.replace(/[^-0-9.]/g, "");
+        if (!v) return;
+        let num = parseFloat(v);
+
+        // 身長が「17.8」など明らかにおかしい（小さすぎる）場合は10倍する
+        if (el.id === 'height' && num < 50) {
+            num = num * 10;
+        } 
+        // 逆に1705など、小数点が消えて巨大化した場合は10で割る（安全策）
+        else if (el.id === 'height' && num > 300) {
+            num = num / 10;
         }
 
-        if (!isValid) {
-            alert(msg); el.value = ""; setTimeout(() => el.focus(), 10); return false;
+        // 体重・握力の補正（200kg超えなどは10で割る）
+        if ((el.id === 'weight' || el.id === 'grip') && num > 200) {
+            num = num / 10;
         }
 
         el.value = num.toFixed(1);
         if (el.id === 'grip') judgeGrip();
         calcBMI();
-        return true;
     }
 
     function dragStart(e, original, opt, q) {
@@ -152,14 +161,12 @@
         if (e.type === 'touchend') e.preventDefault();
         
         if (questions[currentIdx].type === "calc") {
-            const inputs = ['grip', 'height', 'weight'];
-            for (let id of inputs) {
+            ['grip', 'height', 'weight'].forEach(id => {
                 const el = document.getElementById(id);
-                if (el && el.value && !el.value.includes('.')) {
-                    if (!formatToDecimal(el)) return;
-                }
-            }
-            setTimeout(goNext, 150);
+                if (el) finalizeInput(el);
+            });
+            // BMI確定を待ってから次へ
+            setTimeout(goNext, 200);
         } else {
             goNext();
         }
@@ -169,7 +176,7 @@
         const btn = document.getElementById('next-btn');
         if (currentIdx === questions.length - 1) {
             const g = document.getElementById('grip'), h = document.getElementById('height'), w = document.getElementById('weight');
-            if (!g.value || !h.value || !w.value) { alert("身体計測をすべて入力してください"); return; }
+            if (!g.value || !h.value || !w.value) { alert("計測値を入力してください"); return; }
             
             btn.disabled = true; btn.innerText = "保存中...";
             allAnswers.grip = g.value; allAnswers.bmi = document.getElementById('bmi-val').innerText;
@@ -194,7 +201,7 @@
     function calcBMI() {
         const h_val = parseFloat(document.getElementById('height').value);
         const w_val = parseFloat(document.getElementById('weight').value);
-        if (h_val > 0 && w_val > 0) {
+        if (h_val > 50 && w_val > 10) {
             const h_m = h_val / 100;
             const bmi = (w_val / (h_m * h_m)).toFixed(1);
             document.getElementById('bmi-val').innerText = bmi;
