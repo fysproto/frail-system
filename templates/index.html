@@ -78,11 +78,11 @@
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" placeholder="例: 25 または 255" onblur="formatToDecimal(this)">
+                <input type="text" id="grip" inputmode="decimal" placeholder="250 と打つと 25.0" onblur="formatToDecimal(this)">
                 <label>身長 (cm)</label>
-                <input type="text" id="height" inputmode="decimal" placeholder="例: 170 または 1705" onblur="formatToDecimal(this)">
+                <input type="text" id="height" inputmode="decimal" placeholder="1705 と打つと 170.5" onblur="formatToDecimal(this)">
                 <label>体重 (kg)</label>
-                <input type="text" id="weight" inputmode="decimal" placeholder="例: 60 または 605" onblur="formatToDecimal(this)">
+                <input type="text" id="weight" inputmode="decimal" placeholder="605 と打つと 60.5" onblur="formatToDecimal(this)">
                 <div style="margin-top:10px; font-weight:bold; border-top:1px solid #eee; padding-top:10px;">
                     BMI: <span id="bmi-val" style="font-size:1.4rem; color:#007bff;">-</span> 
                     <span id="dot-bmi" class="status-dot"></span>
@@ -104,13 +104,13 @@
         let isValid = true;
         let msg = "";
         if (el.id === 'height') {
-            if (num < 50 || num > 250) { isValid = false; msg = "身長（50〜250cm）が正しくありません。"; }
-            else if (v.length < 3) { isValid = false; msg = "身長は3桁以上で入力してください。"; }
+            if (num < 50 || num > 250) { isValid = false; msg = "身長の値（50〜250）が正しくありません。"; }
+            else if (v.length < 3) { isValid = false; msg = "身長は3桁以上（170など）で入力してください。"; }
         } else if (el.id === 'weight') {
-            if (num <= 10 || num > 200) { isValid = false; msg = "体重（10.1kg〜200kg）が正しくありません。"; }
-            else if (v.length < 2) { isValid = false; msg = "体重は2桁以上で入力してください。"; }
+            if (num <= 10 || num > 200) { isValid = false; msg = "体重の値（10〜200）が正しくありません。"; }
+            else if (v.length < 2) { isValid = false; msg = "体重は2桁以上（60など）で入力してください。"; }
         } else if (el.id === 'grip') {
-            if (num < 5 || num > 100) { isValid = false; msg = "握力（5kg〜100kg）が正しくありません。"; }
+            if (num < 5 || num > 100) { isValid = false; msg = "握力の値（5〜100）が正しくありません。"; }
         }
 
         if (!isValid) {
@@ -159,7 +159,7 @@
                     if (!formatToDecimal(el)) return;
                 }
             }
-            setTimeout(goNext, 150); // BMI表示を確実に見せるため少し長めに待機
+            setTimeout(goNext, 150);
         } else {
             goNext();
         }
