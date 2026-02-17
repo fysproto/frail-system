@@ -16,17 +16,10 @@
         .placed-ohajiki { width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem; box-shadow: inset 0 0 15px rgba(255,255,255,0.5), 0 4px 10px rgba(0,0,0,0.2); position: relative; }
         #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; }
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
-        
-        /* ズレ防止のvisibility。pointer-eventsは明示的に制御せずブラウザに任せる */
-        #next-btn { 
-            margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; 
-            background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; 
-            visibility: hidden;
-        }
+        #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; visibility: hidden; }
         #next-btn.visible { visibility: visible; }
         #next-btn:active { background: #218838; opacity: 0.8; }
         #next-btn:disabled { background: #adb5bd; cursor: not-allowed; }
-
         .ohajiki-blue { background: #007bff; } 
         .ohajiki-red { background: #dc3545; } 
         .ohajiki-white { background: #fff; color: #666 !important; border: 1px solid #ccc; }
@@ -40,11 +33,7 @@
 <body>
 <div id="app">
     <header><div id="q-no"></div><div id="q-text"></div><div id="progress-bar"></div></header>
-    <div id="main-stage">
-        <div id="drop-zone">ここにシールをドラッグ</div>
-        <div id="options"></div>
-        <button id="next-btn" ontouchend="handleNext(event)" onclick="handleNext(event)">次へ</button>
-    </div>
+    <div id="main-stage"><div id="drop-zone">ここにシールをドラッグ</div><div id="options"></div><button id="next-btn" ontouchend="handleNext(event)" onclick="handleNext(event)">次へ</button></div>
 </div>
 <script>
     const gender = "{{ gender|safe }}" || "1";
@@ -80,22 +69,20 @@
         dropZone.style.display = q.type === "calc" ? "none" : "flex";
         
         const btn = document.getElementById('next-btn');
-        if (q.type === "calc") {
-            btn.classList.add('visible');
-        } else {
-            btn.classList.remove('visible');
-        }
-        btn.disabled = false;
-        btn.innerText = "次へ";
+        if (q.type === "calc") btn.classList.add('visible');
+        else btn.classList.remove('visible');
+        btn.disabled = false; btn.innerText = "次へ";
 
         const optsDiv = document.getElementById('options');
         optsDiv.innerHTML = "";
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" oninput="formatAutoDecimal(this)">
-                <label>身長 (cm)</label><input type="text" id="height" inputmode="decimal" oninput="formatAutoDecimal(this)">
-                <label>体重 (kg)</label><input type="text" id="weight" inputmode="decimal" oninput="formatAutoDecimal(this)">
+                <input type="text" id="grip" inputmode="decimal" placeholder="00.0" onblur="formatToDecimal(this)">
+                <label>身長 (cm)</label>
+                <input type="text" id="height" inputmode="decimal" placeholder="000.0" onblur="formatToDecimal(this)">
+                <label>体重 (kg)</label>
+                <input type="text" id="weight" inputmode="decimal" placeholder="00.0" onblur="formatToDecimal(this)">
                 <div>BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
             </div>`;
         } else {
@@ -107,10 +94,25 @@
         }
     }
 
-    function formatAutoDecimal(el) {
+    // フォーカスが外れた（入力が一旦終わった）ときにまとめて小数点化
+    function formatToDecimal(el) {
         let v = el.value.replace(/\D/g, ""); if (!v) return;
-        let num = (parseFloat(v) / 10).toFixed(1); el.value = num;
-        if (el.id === 'grip') judgeGrip(); calcBMI();
+        
+        // 身長(height)は3桁以上、その他は2桁以上を期待するガード（簡易版）
+        if (el.id === 'height' && v.length < 3) {
+            alert("身長を正しく入力してください（例: 1650 → 165.0）");
+            el.value = ""; return;
+        }
+        if ((el.id === 'grip' || el.id === 'weight') && v.length < 2) {
+            alert("数値を正しく入力してください");
+            el.value = ""; return;
+        }
+
+        let num = (parseFloat(v) / 10).toFixed(1);
+        el.value = num;
+
+        if (el.id === 'grip') judgeGrip();
+        calcBMI();
     }
 
     function dragStart(e, original, opt, q) {
@@ -138,27 +140,23 @@
         document.addEventListener('touchmove', move, { passive: false }); document.addEventListener('touchend', end);
     }
 
-    // タッチ終了時にボタンの範囲内であれば実行。これで1回タップを確実にする。
     function handleNext(e) {
         const btn = document.getElementById('next-btn');
         if (!btn.classList.contains('visible') || btn.disabled) return;
-        
-        // 置き直しができるように、自動遷移はさせずクリックイベントのみを確実に発火させる
-        if (e.type === 'touchend') {
-            e.preventDefault(); 
-        }
+        if (e.type === 'touchend') e.preventDefault();
         goNext();
     }
 
     async function goNext() {
         const btn = document.getElementById('next-btn');
-        if (btn.disabled) return;
-
         if (currentIdx === questions.length - 1) {
-            btn.disabled = true;
-            btn.innerText = "保存中...";
-            allAnswers.grip = document.getElementById('grip').value;
-            allAnswers.bmi = document.getElementById('bmi-val').innerText;
+            // 保存前に未確定の入力がないか最終チェック
+            const g = document.getElementById('grip'), h = document.getElementById('height'), w = document.getElementById('weight');
+            if (!g.value || !h.value || !w.value) {
+                alert("身体計測をすべて入力してください"); return;
+            }
+            btn.disabled = true; btn.innerText = "保存中...";
+            allAnswers.grip = g.value; allAnswers.bmi = document.getElementById('bmi-val').innerText;
             try {
                 await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
                 const form = document.createElement('form'); form.method = 'POST'; form.action = '/result';
@@ -166,16 +164,10 @@
                 const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
                 form.append(iA, iC); document.body.appendChild(form); form.submit();
             } catch (e) {
-                alert("保存に失敗しました。");
-                btn.disabled = false;
-                btn.innerText = "次へ";
+                alert("保存失敗"); btn.disabled = false; btn.innerText = "次へ";
             }
-        } else {
-            currentIdx++;
-            render();
-        }
+        } else { currentIdx++; render(); }
     }
-    render();
 
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
@@ -195,6 +187,7 @@
             colorResults['bmi'] = isRed ? "red" : "blue";
         }
     }
+    render();
 </script>
 </body>
 </html>
