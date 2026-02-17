@@ -5,75 +5,102 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>フレイル測定シート</title>
     <style>
-        body { font-family: sans-serif; background: #fff; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 800px; margin: auto; }
-        .header { border-bottom: 3px solid #28a745; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+        /* 1. 全体設定：スマホで横スクロールを絶対に出さない */
+        body { font-family: sans-serif; background: #fff; margin: 0; padding: 20px; color: #333; overflow-x: hidden; }
+        .container { max-width: 100%; margin: auto; }
         
-        .ohajiki-area { background: #f8f9fa; padding: 15px; border-radius: 15px; margin-bottom: 20px; text-align: center; }
-        .ohajiki-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-        .ohajiki { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset -3px -3px 6px rgba(0,0,0,0.1); position: relative; }
-        .red { background: #dc3545; } .blue { background: #007bff; } .yellow { background: #ffc107; } .white { background: #fff; border: 1px solid #ccc; }
+        .header { border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 15px; }
+        .info-label { display: inline-block; background: #f0f4f8; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; color: #555; margin: 0 10px 5px 0; }
+        
+        /* 2. テーブル設定：横幅を100%固定 */
+        .list-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 15px; }
+        .list-table th, .list-table td { padding: 12px 5px; border-bottom: 1px solid #ddd; text-align: left; word-wrap: break-word; }
+        .list-table th { background: #eee; font-size: 0.8rem; }
+        
+        /* 3. 質問と回答を上下2段に組む：これで狭い画面でも評価アイコンが隠れない */
+        .q-text { font-size: 0.95rem; font-weight: bold; display: block; line-height: 1.4; color: #333; }
+        .a-text { font-size: 0.85rem; color: #007bff; display: block; margin-top: 4px; padding-left: 2px; }
+        
+        /* 4. ハッキリした赤と青の評価アイコン */
+        .eval-icon { width: 22px; height: 22px; border-radius: 50%; margin: auto; }
+        .eval-red { background: #dc3545; box-shadow: 0 0 4px rgba(220,53,69,0.3); }
+        .eval-blue { background: #007bff; box-shadow: 0 0 4px rgba(0,123,255,0.3); }
 
-        .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .table th { background: #e9ecef; border: 1px solid #dee2e6; padding: 10px; font-size: 0.85rem; }
-        .table td { border: 1px solid #dee2e6; padding: 12px 10px; font-size: 0.9rem; }
+        .btn-area { text-align: center; margin-top: 30px; }
+        .btn-close { display: inline-block; padding: 12px 40px; background: #6c757d; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; }
         
-        .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
-        .btn-close { display: inline-block; margin-top: 30px; padding: 12px 40px; background: #6c757d; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; }
         @media print { .no-print { display: none; } }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1 style="margin:0; color:#28a745; font-size: 1.5rem;">フレイル測定シート</h1>
-            <div style="font-size: 0.8rem; color: #666;">実施日: {{ date }}</div>
-        </div>
-
-        <div class="ohajiki-area">
-            <div class="ohajiki-container">
-                {% set item_list = ['finger','q1','q2','q3','q4','q5','q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','grip','bmi'] %}
-                {% for id in item_list %}
-                    <div class="ohajiki {{ colors.get(id, 'white') }}"></div>
-                {% endfor %}
+            <h1 style="margin:0; font-size: 1.4rem; color: #007bff;">フレイル測定シート</h1>
+            <div style="margin-top: 10px;">
+                <span class="info-label">測定日: {{ date }}</span>
+                <span class="info-label">利用者様</span>
             </div>
         </div>
 
-        <table class="table">
+        <table class="list-table">
             <thead>
-                <tr><th style="width:40px;">No</th><th>項目</th><th>回答内容</th><th style="width:60px;">評価</th></tr>
+                <tr>
+                    <th style="width: 35px;">No</th>
+                    <th>質問と回答</th>
+                    <th style="width: 55px; text-align: center;">状態</th>
+                </tr>
             </thead>
-            <tbody id="table-body"></tbody>
+            <tbody id="sheet-body"></tbody>
         </table>
 
-        <div style="text-align: center;" class="no-print">
-            <a href="/result" class="btn-close">✕ 画面を閉じて戻る</a>
+        <div class="btn-area no-print">
+            <a href="/result" class="btn-close">✕ 画面を閉じる</a>
         </div>
     </div>
 
     <script>
+        // サーバーから渡されたデータを取得
         const answers = {{ answers|tojson }};
         const colors = {{ colors|tojson }};
-        const qList = [
+        
+        // 表示する全項目（入力順）
+        const qData = [
             { id: "finger", no: "-", text: "指輪っかテスト" },
-            { id: "q1", no: "1", text: "現在の健康状態" }, { id: "q2", no: "2", text: "生活の満足度" },
-            { id: "q3", no: "3", text: "1日3食の食事" }, { id: "q4", no: "4", text: "噛みにくさ" },
-            { id: "q5", no: "5", text: "むせ" }, { id: "q6", no: "6", text: "体重減少" },
-            { id: "q7", no: "7", text: "歩行速度" }, { id: "q8", no: "8", text: "転倒経験" },
-            { id: "q9", no: "9", text: "運動習慣" }, { id: "q10", no: "10", text: "もの忘れ" },
-            { id: "q11", no: "11", text: "今日の日付" }, { id: "q12", no: "12", text: "喫煙習慣" },
-            { id: "q13", no: "13", text: "外出頻度" }, { id: "q14", no: "14", text: "友人との交流" },
-            { id: "q15", no: "15", text: "相談相手" }, { id: "grip", no: "-", text: "握力" }, { id: "bmi", no: "-", text: "BMI" }
+            { id: "q1", no: "1", text: "現在の健康状態はいかがですか？" },
+            { id: "q2", no: "2", text: "毎日の生活に満足していますか？" },
+            { id: "q3", no: "3", text: "1日3食、規則正しく食べていますか？" },
+            { id: "q4", no: "4", text: "半年前に比べて、硬いものが食べにくくなりましたか？" },
+            { id: "q5", no: "5", text: "お茶や汁物で、むせることがありますか？" },
+            { id: "q6", no: "6", text: "半年間で、2〜3kg以上の体重減少がありましたか？" },
+            { id: "q7", no: "7", text: "以前に比べて、歩くのが遅くなったと感じますか？" },
+            { id: "q8", no: "8", text: "この1年間に、転んだことがありますか？" },
+            { id: "q9", no: "9", text: "週に1回以上、外出していますか？" },
+            { id: "q10", no: "10", text: "周りの人から「もの忘れがある」と言われますか？" },
+            { id: "q11", no: "11", text: "今日の日付がわからないことがありますか？" },
+            { id: "q12", no: "12", text: "現在、タバコを吸う習慣がありますか？" },
+            { id: "q13", no: "13", text: "週に1回以上、友人と会ったり外出しますか？" },
+            { id: "q14", no: "14", text: "友人と話をすることがありますか？" },
+            { id: "q15", no: "15", text: "困ったときに相談できる人がいますか？" },
+            { id: "grip", no: "-", text: "握力" },
+            { id: "bmi", no: "-", text: "BMI（体格指数）" }
         ];
-        const tbody = document.getElementById('table-body');
-        qList.forEach(q => {
-            const colorClass = colors[q.id] || 'white';
-            tbody.innerHTML += `<tr>
-                <td style="text-align:center; color:#888;">${q.no}</td>
-                <td>${q.text}</td>
-                <td style="font-weight:bold; color:#007bff;">${answers[q.id] || "-"}</td>
-                <td style="text-align:center;"><div class="dot ${colorClass}"></div></td>
-            </tr>`;
+
+        const tbody = document.getElementById('sheet-body');
+        
+        qData.forEach(q => {
+            const color = colors[q.id] || 'white';
+            // 赤または黄色なら「赤アイコン」、それ以外は「青アイコン」
+            const iconClass = (color === 'red' || color === 'yellow') ? 'eval-red' : 'eval-blue';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td style="color:#888; font-size:0.8rem; vertical-align:top; text-align:center;">${q.no}</td>
+                    <td>
+                        <span class="q-text">${q.text}</span>
+                        <span class="a-text">回答：${answers[q.id] || "-"}</span>
+                    </td>
+                    <td style="text-align:center;"><div class="eval-icon ${iconClass}"></div></td>
+                </tr>`;
         });
     </script>
 </body>
