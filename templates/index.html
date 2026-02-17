@@ -19,7 +19,7 @@
         #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; visibility: hidden; }
         .ohajiki-blue { background: #007bff; } 
         .ohajiki-red { background: #dc3545; } 
-        .ohajiki-white { background: #fff; color: #666 !important; border: 1px solid #ccc; }
+        .ohajiki-white { background: #fff; color: #666 !important; border: 2px solid #ccc; }
         .ohajiki-yellow { background: #ffc107; color: white !important; }
         .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; }
@@ -34,7 +34,6 @@
 </div>
 <script>
     const gender = "{{ gender|safe }}" || "1";
-    // 変更点：optsの並び順を「はい」「いいえ」で統一
     const questions = [
         { id: "finger", no: "計測", text: "指輪っかテスト", opts: ["囲めない", "ちょうど", "隙間ができる"], type: "logic", blue: ["囲めない", "ちょうど"], red: ["隙間ができる"] },
         { id: "q1", no: "1", text: "現在の健康状態はいかがですか？", opts: ["よい", "まあよい", "ふつう", "あまりよくない", "よくない"], type: "logic", blue: ["よい", "まあよい", "ふつう"], red: ["あまりよくない", "よくない"] },
@@ -71,9 +70,9 @@
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" oninput="formatAutoDecimal(this, 0, 99.9)">
-                <label>身長 (cm)</label><input type="text" id="height" inputmode="decimal" oninput="formatAutoDecimal(this, 100, 200)">
-                <label>体重 (kg)</label><input type="text" id="weight" inputmode="decimal" oninput="formatAutoDecimal(this, 20, 200)">
+                <input type="text" id="grip" inputmode="decimal" oninput="formatAutoDecimal(this)">
+                <label>身長 (cm)</label><input type="text" id="height" inputmode="decimal" oninput="formatAutoDecimal(this)">
+                <label>体重 (kg)</label><input type="text" id="weight" inputmode="decimal" oninput="formatAutoDecimal(this)">
                 <div>BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
             </div>`;
         } else {
@@ -85,7 +84,7 @@
         }
     }
 
-    function formatAutoDecimal(el, min, max) {
+    function formatAutoDecimal(el) {
         let v = el.value.replace(/\D/g, ""); if (!v) return;
         let num = (parseFloat(v) / 10).toFixed(1); el.value = num;
         if (el.id === 'grip') judgeGrip(); calcBMI();
@@ -98,9 +97,18 @@
             const rect = document.getElementById('drop-zone').getBoundingClientRect();
             const t = ev.changedTouches[0];
             if (t.clientX > rect.left && t.clientX < rect.right && t.clientY > rect.top && t.clientY < rect.bottom) {
-                const isBlue = q.blue.includes(opt);
-                const colorKey = isBlue ? "blue" : "red";
-                const colorClass = isBlue ? "ohajiki-blue" : "ohajiki-red";
+                
+                let colorKey = "blue", colorClass = "ohajiki-blue";
+                const isRed = q.red.includes(opt);
+
+                if (q.id === "q1" || q.id === "q2" || q.id === "q12") {
+                    colorKey = isRed ? "yellow" : "white";
+                    colorClass = isRed ? "ohajiki-yellow" : "ohajiki-white";
+                } else {
+                    colorKey = isRed ? "red" : "blue";
+                    colorClass = isRed ? "ohajiki-red" : "ohajiki-blue";
+                }
+
                 document.getElementById('drop-zone').innerHTML = `<div class="placed-ohajiki ${colorClass}">${opt}</div>`;
                 allAnswers[q.id] = opt; colorResults[q.id] = colorKey;
                 document.getElementById('next-btn').style.visibility = "visible";
