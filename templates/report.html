@@ -3,46 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>フレイル測定報告書</title>
+    <title>フレイル測定シート</title>
     <style>
         body { font-family: sans-serif; background: #fff; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 800px; margin: auto; }
-        .header { border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-        .header h1 { margin: 0; color: #007bff; font-size: 1.6rem; }
-        .status-summary { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; border: 1px solid #dee2e6; }
+        .header { border-bottom: 3px solid #28a745; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+        
+        .ohajiki-area { background: #f8f9fa; padding: 15px; border-radius: 15px; margin-bottom: 20px; text-align: center; }
+        .ohajiki-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .ohajiki { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset -3px -3px 6px rgba(0,0,0,0.1); position: relative; }
+        .red { background: #dc3545; } .blue { background: #007bff; } .yellow { background: #ffc107; } .white { background: #fff; border: 1px solid #ccc; }
+
         .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .table th { background: #e9ecef; border: 1px solid #dee2e6; padding: 10px; font-size: 0.9rem; }
-        .table td { border: 1px solid #dee2e6; padding: 10px; vertical-align: middle; }
-        .eval-dot { width: 18px; height: 18px; border-radius: 50%; border: 3px solid; margin: auto; }
-        .blue { border-color: #007bff; }
-        .red { border-color: #dc3545; }
-        .btn-area { text-align: center; margin-top: 30px; }
-        .btn-print { background: #007bff; color: white; padding: 12px 30px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-close { display: inline-block; margin-top: 15px; padding: 10px 20px; background: #f1f3f5; color: #333; text-decoration: none; border-radius: 8px; border: 1px solid #ccc; font-weight: bold; }
+        .table th { background: #e9ecef; border: 1px solid #dee2e6; padding: 10px; font-size: 0.85rem; }
+        .table td { border: 1px solid #dee2e6; padding: 12px 10px; font-size: 0.9rem; }
+        
+        .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+        .btn-close { display: inline-block; margin-top: 30px; padding: 12px 40px; background: #6c757d; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; }
         @media print { .no-print { display: none; } }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>フレイル測定報告書</h1>
-            <div style="font-size: 0.9rem; color: #666;">測定日時: {{ date }}</div>
+            <h1 style="margin:0; color:#28a745; font-size: 1.5rem;">フレイル測定シート</h1>
+            <div style="font-size: 0.8rem; color: #666;">実施日: {{ date }}</div>
         </div>
-        <div class="status-summary">
-            <span style="font-weight: bold;">総合判定：</span>
-            <span style="font-size: 1.5rem; font-weight: bold; color: {{ status_color }};">{{ status }}</span>
+
+        <div class="ohajiki-area">
+            <div class="ohajiki-container">
+                {% set item_list = ['finger','q1','q2','q3','q4','q5','q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','grip','bmi'] %}
+                {% for id in item_list %}
+                    <div class="ohajiki {{ colors.get(id, 'white') }}"></div>
+                {% endfor %}
+            </div>
         </div>
+
         <table class="table">
             <thead>
-                <tr><th style="width:40px;">No</th><th>質問項目</th><th style="width:160px;">回答内容</th><th style="width:60px;">評価</th></tr>
+                <tr><th style="width:40px;">No</th><th>項目</th><th>回答内容</th><th style="width:60px;">評価</th></tr>
             </thead>
             <tbody id="table-body"></tbody>
         </table>
-        <div class="btn-area no-print">
-            <button class="btn-print" onclick="window.print()">このページを印刷する</button><br>
+
+        <div style="text-align: center;" class="no-print">
             <a href="/result" class="btn-close">✕ 画面を閉じて戻る</a>
         </div>
     </div>
+
     <script>
         const answers = {{ answers|tojson }};
         const colors = {{ colors|tojson }};
@@ -59,12 +67,12 @@
         ];
         const tbody = document.getElementById('table-body');
         qList.forEach(q => {
-            const isRisk = (colors[q.id] === 'red' || colors[q.id] === 'yellow');
+            const colorClass = colors[q.id] || 'white';
             tbody.innerHTML += `<tr>
                 <td style="text-align:center; color:#888;">${q.no}</td>
-                <td style="font-size:0.9rem;">${q.text}</td>
-                <td style="font-weight:bold; color:#007bff; font-size:0.9rem;">${answers[q.id] || "-"}</td>
-                <td><div class="eval-dot ${isRisk ? 'red' : 'blue'}"></div></td>
+                <td>${q.text}</td>
+                <td style="font-weight:bold; color:#007bff;">${answers[q.id] || "-"}</td>
+                <td style="text-align:center;"><div class="dot ${colorClass}"></div></td>
             </tr>`;
         });
     </script>
