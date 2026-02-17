@@ -16,10 +16,14 @@
         .placed-ohajiki { width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem; box-shadow: inset 0 0 15px rgba(255,255,255,0.5), 0 4px 10px rgba(0,0,0,0.2); position: relative; }
         #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; }
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
+        
+        /* 次へボタンのスタイルと無効化設定 */
         #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; visibility: hidden; }
+        #next-btn:disabled { background: #adb5bd; cursor: not-allowed; }
+
         .ohajiki-blue { background: #007bff; } 
         .ohajiki-red { background: #dc3545; } 
-        .ohajiki-white { background: #fff; color: #666 !important; border: 2px solid #ccc; }
+        .ohajiki-white { background: #fff; color: #666 !important; border: 1px solid #ccc; }
         .ohajiki-yellow { background: #ffc107; color: white !important; }
         .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; }
@@ -64,7 +68,12 @@
         const dropZone = document.getElementById('drop-zone');
         dropZone.innerHTML = "ここにシールをドラッグ";
         dropZone.style.display = q.type === "calc" ? "none" : "flex";
-        document.getElementById('next-btn').style.visibility = q.type === "calc" ? "visible" : "hidden";
+        
+        const btn = document.getElementById('next-btn');
+        btn.style.visibility = q.type === "calc" ? "visible" : "hidden";
+        btn.disabled = false;
+        btn.innerText = "次へ";
+
         const optsDiv = document.getElementById('options');
         optsDiv.innerHTML = "";
         if (q.type === "calc") {
@@ -97,10 +106,8 @@
             const rect = document.getElementById('drop-zone').getBoundingClientRect();
             const t = ev.changedTouches[0];
             if (t.clientX > rect.left && t.clientX < rect.right && t.clientY > rect.top && t.clientY < rect.bottom) {
-                
                 let colorKey = "blue", colorClass = "ohajiki-blue";
                 const isRed = q.red.includes(opt);
-
                 if (q.id === "q1" || q.id === "q2" || q.id === "q12") {
                     colorKey = isRed ? "yellow" : "white";
                     colorClass = isRed ? "ohajiki-yellow" : "ohajiki-white";
@@ -108,7 +115,6 @@
                     colorKey = isRed ? "red" : "blue";
                     colorClass = isRed ? "ohajiki-red" : "ohajiki-blue";
                 }
-
                 document.getElementById('drop-zone').innerHTML = `<div class="placed-ohajiki ${colorClass}">${opt}</div>`;
                 allAnswers[q.id] = opt; colorResults[q.id] = colorKey;
                 document.getElementById('next-btn').style.visibility = "visible";
@@ -138,15 +144,30 @@
     }
 
     async function goNext() {
+        const btn = document.getElementById('next-btn');
         if (currentIdx === questions.length - 1) {
+            // 連打対策：ボタンを即座に無効化
+            btn.disabled = true;
+            btn.innerText = "保存中...";
+            
             allAnswers.grip = document.getElementById('grip').value;
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
-            await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
-            const form = document.createElement('form'); form.method = 'POST'; form.action = '/result';
-            const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
-            const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
-            form.append(iA, iC); document.body.appendChild(form); form.submit();
-        } else { currentIdx++; render(); }
+            
+            try {
+                await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
+                const form = document.createElement('form'); form.method = 'POST'; form.action = '/result';
+                const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
+                const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
+                form.append(iA, iC); document.body.appendChild(form); form.submit();
+            } catch (e) {
+                alert("保存に失敗しました。通信環境を確認してください。");
+                btn.disabled = false;
+                btn.innerText = "次へ";
+            }
+        } else {
+            currentIdx++;
+            render();
+        }
     }
     render();
 </script>
