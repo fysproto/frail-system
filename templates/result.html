@@ -9,6 +9,7 @@
         .ohajiki-area { background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .ohajiki-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin: 20px 0; min-height: 50px; }
         
+        /* おはじきのデザイン */
         .ohajiki {
             width: 45px; height: 45px; border-radius: 50%;
             box-shadow: inset -5px -5px 10px rgba(0,0,0,0.2), 3px 5px 10px rgba(0,0,0,0.1);
@@ -18,10 +19,13 @@
             content: ''; position: absolute; top: 15%; left: 15%; width: 30%; height: 30%;
             background: rgba(255,255,255,0.4); border-radius: 50%;
         }
+        
+        /* 色の定義 */
         .red { background: radial-gradient(circle at 30% 30%, #ff5f6d, #dc3545); }
         .blue { background: radial-gradient(circle at 30% 30%, #5fafff, #007bff); }
         .yellow { background: radial-gradient(circle at 30% 30%, #fff05f, #ffc107); }
         .white { background: #fff; border: 1px solid #ccc; box-shadow: none; }
+        .white::after { display: none; }
 
         .category-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .category-title { font-weight: bold; border-left: 5px solid #28a745; padding-left: 10px; margin-bottom: 10px; color: #28a745; }
@@ -34,20 +38,22 @@
         .dot.gray { background: #adb5bd; }
 
         .btn-home { display: inline-block; padding: 15px 40px; background: #007bff; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; margin-top: 20px; }
+        .description { font-size: 0.8rem; color: #666; margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <h2>お疲れ様でした！</h2>
+    
     <div class="ohajiki-area">
-        <p style="font-weight: bold;">色だまを数えてみましょう</p>
+        <p style="font-weight: bold; margin-bottom:5px;">あなたの「のびしろ」を確認しましょう</p>
         <div class="ohajiki-container">
-            {% for id, color in colors.items() %}
-                {# 特殊質問(q1, q2, q12)以外をメインのおはじきとして表示 #}
-                {% if id not in ['q1', 'q2', 'q12'] %}
-                    <div class="ohajiki {{ color }}"></div>
-                {% endif %}
+            {# 18項目すべてをリストで定義してループさせる(安全策) #}
+            {% set item_list = ['finger','q1','q2','q3','q4','q5','q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','grip','bmi'] %}
+            {% for id in item_list %}
+                <div class="ohajiki {{ colors.get(id, 'white') }}"></div>
             {% endfor %}
         </div>
+        <p class="description">※ {{ item_list|length }}項目すべての結果が表示されています</p>
     </div>
 
     <div class="category-card">
@@ -75,8 +81,8 @@
         <div class="item-row">Q15 相談できる人 <span class="dot {{ colors.get('q15','gray') }}"></span></div>
     </div>
 
-    <div class="category-card" style="border-left-color: #6c757d;">
-        <div class="category-title" style="color: #6c757d;">生活のリズム</div>
+    <div class="category-card">
+        <div class="category-title" style="color: #6c757d; border-left-color: #6c757d;">生活のリズム</div>
         <div class="item-row">Q10 物忘れの相談 <span class="dot {{ colors.get('q10','gray') }}"></span></div>
         <div class="item-row">Q11 今日のみちしるべ <span class="dot {{ colors.get('q11','gray') }}"></span></div>
     </div>
