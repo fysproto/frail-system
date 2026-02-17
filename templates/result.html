@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>測定結果</title>
     <style>
+        /* --- 既存のスタイル（すべて維持） --- */
         body { font-family: sans-serif; background: #f0f4f8; margin: 0; padding: 20px; text-align: center; color: #333; }
         .ohajiki-area { background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .ohajiki-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin: 20px 0; min-height: 50px; }
-        
-        /* おはじきのデザイン */
         .ohajiki {
             width: 45px; height: 45px; border-radius: 50%;
             box-shadow: inset -5px -5px 10px rgba(0,0,0,0.2), 3px 5px 10px rgba(0,0,0,0.1);
@@ -19,14 +18,11 @@
             content: ''; position: absolute; top: 15%; left: 15%; width: 30%; height: 30%;
             background: rgba(255,255,255,0.4); border-radius: 50%;
         }
-        
-        /* 色の定義 */
         .red { background: radial-gradient(circle at 30% 30%, #ff5f6d, #dc3545); }
         .blue { background: radial-gradient(circle at 30% 30%, #5fafff, #007bff); }
         .yellow { background: radial-gradient(circle at 30% 30%, #fff05f, #ffc107); }
         .white { background: #fff; border: 1px solid #ccc; box-shadow: none; }
         .white::after { display: none; }
-
         .category-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .category-title { font-weight: bold; border-left: 5px solid #28a745; padding-left: 10px; margin-bottom: 10px; color: #28a745; }
         .item-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
@@ -36,9 +32,40 @@
         .dot.yellow { background: #ffc107; }
         .dot.white { background: #fff; border: 1px solid #ccc; }
         .dot.gray { background: #adb5bd; }
-
         .btn-home { display: inline-block; padding: 15px 40px; background: #007bff; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; margin-top: 20px; }
         .description { font-size: 0.8rem; color: #666; margin-bottom: 10px; }
+
+        /* --- 追加：回答一覧表用のスタイル --- */
+        .history-section { margin-top: 40px; text-align: left; }
+        .history-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #333; }
+        
+        /* 基本情報の横並びテーブル */
+        .meta-table { width: 100%; border-collapse: collapse; background: #fff; margin-bottom: 10px; font-size: 0.85rem; }
+        .meta-table td { border: 1px solid #dee2e6; padding: 8px; text-align: center; }
+        .bg-label { background: #f8f9fa; font-weight: bold; color: #666; }
+
+        /* 回答一覧テーブル */
+        .history-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.9rem; }
+        .history-table th { background: #495057; color: white; padding: 10px 5px; font-size: 0.8rem; }
+        .history-table td { border: 1px solid #dee2e6; padding: 10px 5px; vertical-align: middle; }
+        
+        /* スマホ向け：質問を改行させて横幅を節約 */
+        .q-cell { display: flex; flex-direction: column; }
+        .q-label { font-weight: bold; color: #333; margin-bottom: 2px; }
+        .a-val { font-size: 0.8rem; color: #007bff; font-weight: bold; }
+
+        /* 評価用の青丸・赤丸（中抜きデザインで統一） */
+        .eval-icon { width: 20px; height: 20px; border-radius: 50%; margin: 0 auto; border: 3px solid; box-sizing: border-box; }
+        .eval-blue { border-color: #007bff; }
+        .eval-red { border-color: #dc3545; }
+        
+        .section-divider { background: #f1f3f5 !important; font-weight: bold; text-align: center; font-size: 0.8rem; }
+
+        @media print {
+            .btn-home, .description { display: none; }
+            body { padding: 0; background: white; }
+            .ohajiki-area, .category-card { box-shadow: none; border: 1px solid #eee; }
+        }
     </style>
 </head>
 <body>
@@ -47,7 +74,6 @@
     <div class="ohajiki-area">
         <p style="font-weight: bold; margin-bottom:5px;">あなたの「のびしろ」を確認しましょう</p>
         <div class="ohajiki-container">
-            {# 18項目すべてをリストで定義してループさせる(安全策) #}
             {% set item_list = ['finger','q1','q2','q3','q4','q5','q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','grip','bmi'] %}
             {% for id in item_list %}
                 <div class="ohajiki {{ colors.get(id, 'white') }}"></div>
@@ -94,6 +120,108 @@
         <div class="item-row">Q12 たばこの習慣 <span class="dot {{ colors.get('q12','gray') }}"></span></div>
     </div>
 
+    <div class="history-section">
+        <div class="history-title">フレイル測定回答一覧</div>
+        
+        <table class="meta-table">
+            <tr>
+                <td class="bg-label">性別</td>
+                <td class="bg-label">測定日時</td>
+            </tr>
+            <tr>
+                <td>{{ "男性" if gender == "1" else "女性" }}</td>
+                <td id="date-display"></td>
+            </tr>
+        </table>
+
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th style="width: 30px;">No</th>
+                    <th>質問と回答内容</th>
+                    <th style="width: 40px;">評価</th>
+                </tr>
+            </thead>
+            <tbody id="report-body">
+                </tbody>
+        </table>
+    </div>
+
     <a href="/mypage" class="btn-home">マイページへ戻る</a>
+
+    <script>
+        // データ受け取り
+        const answers = {{ answers|tojson }};
+        const colors = {{ colors|tojson }};
+        
+        // 質問の全リスト（入力順通り）
+        const qData = [
+            { id: "finger", no: "-", text: "指輪っかテスト" },
+            { id: "q1", no: "1", text: "現在の健康状態はいかがですか？" },
+            { id: "q2", no: "2", text: "毎日の生活に満足していますか？" },
+            { id: "q3", no: "3", text: "1日3食きちんと食べていますか？" },
+            { id: "q4", no: "4", text: "固いものが食べにくくなりましたか？" },
+            { id: "q5", no: "5", text: "お茶や汁物でむせることがありますか？" },
+            { id: "q6", no: "6", text: "半年で2~3kg以上の体重減少がありましたか？" },
+            { id: "q7", no: "7", text: "歩く速度が遅くなってきたと思いますか？" },
+            { id: "q8", no: "8", text: "この1年間に転んだことがありますか？" },
+            { id: "q9", no: "9", text: "週1回以上の運動をしていますか？" },
+            { id: "q10", no: "10", text: "もの忘れがあると言われていますか？" },
+            { id: "q11", no: "11", text: "今日の日付がわからない時がありますか？" },
+            { id: "q12", no: "12", text: "あなたはたばこを吸いますか？" },
+            { id: "q13", no: "13", text: "週に1回以上は外出していますか？" },
+            { id: "q14", no: "14", text: "家族や友人と付き合いがありますか？" },
+            { id: "q15", no: "15", text: "体調が悪い時に相談できる人がいますか？" }
+        ];
+
+        const tbody = document.getElementById('report-body');
+
+        // テーブル行の生成
+        qData.forEach(q => {
+            const row = document.createElement('tr');
+            const colorClass = (colors[q.id] === 'red' || colors[q.id] === 'yellow') ? 'eval-red' : 'eval-blue';
+            row.innerHTML = `
+                <td style="text-align:center; font-size:0.75rem; color:#999;">${q.no}</td>
+                <td>
+                    <div class="q-cell">
+                        <span class="q-label">${q.text}</span>
+                        <span class="a-val">${answers[q.id] || "-"}</span>
+                    </div>
+                </td>
+                <td><div class="eval-icon ${colorClass}"></div></td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        // 身体計測セクションの追加
+        const divRow = document.createElement('tr');
+        divRow.innerHTML = `<td colspan="3" class="section-divider">身体計測データ</td>`;
+        tbody.appendChild(divRow);
+
+        const metrics = [
+            { id: "grip", label: "握力 (kg)", eval: colors.grip },
+            { id: "bmi", label: "BMI (体格指数)", eval: colors.bmi }
+        ];
+
+        metrics.forEach(m => {
+            const row = document.createElement('tr');
+            const colorClass = (m.eval === 'red') ? 'eval-red' : 'eval-blue';
+            row.innerHTML = `
+                <td style="text-align:center; color:#999;">-</td>
+                <td>
+                    <div class="q-cell">
+                        <span class="q-label">${m.label}</span>
+                        <span class="a-val">${answers[m.id] || "-"}</span>
+                    </div>
+                </td>
+                <td><div class="eval-icon ${colorClass}"></div></td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        // 日時表示
+        const now = new Date();
+        document.getElementById('date-display').innerText = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
+    </script>
 </body>
 </html>
