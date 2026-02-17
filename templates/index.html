@@ -78,11 +78,11 @@
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" placeholder="例: 25 または 255" onblur="formatToDecimal(this)">
+                <input type="text" id="grip" inputmode="decimal" placeholder="例: 25" onblur="formatToDecimal(this)">
                 <label>身長 (cm)</label>
-                <input type="text" id="height" inputmode="decimal" placeholder="例: 170 または 1705" onblur="formatToDecimal(this)">
+                <input type="text" id="height" inputmode="decimal" placeholder="例: 170" onblur="formatToDecimal(this)">
                 <label>体重 (kg)</label>
-                <input type="text" id="weight" inputmode="decimal" placeholder="例: 60 または 605" onblur="formatToDecimal(this)">
+                <input type="text" id="weight" inputmode="decimal" placeholder="例: 60" onblur="formatToDecimal(this)">
                 <div>BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
             </div>`;
         } else {
@@ -94,46 +94,30 @@
         }
     }
 
-    // 入力文字数に基づいた自動桁判定ロジック
     function formatToDecimal(el) {
-        let v = el.value.replace(/\D/g, ""); // 数字以外を除去
-        if (!v) return;
+        let v = el.value.replace(/\D/g, ""); if (!v) return;
+        let num = (el.id === 'height') ? (v.length <= 3 ? parseFloat(v) : parseFloat(v) / 10) : (v.length <= 2 ? parseFloat(v) : parseFloat(v) / 10);
 
-        let num;
-        if (el.id === 'height') {
-            // 身長: 3文字以下なら整数(178.0)、4文字以上なら最後を小数(178.5)
-            num = (v.length <= 3) ? parseFloat(v) : parseFloat(v) / 10;
-        } else {
-            // 体重・握力: 2文字以下なら整数(60.0)、3文字以上なら最後を小数(60.5)
-            num = (v.length <= 2) ? parseFloat(v) : parseFloat(v) / 10;
-        }
-
-        // --- バリデーションチェック ---
         let isValid = true;
         let msg = "";
-
         if (el.id === 'height') {
-            if (num < 50 || num > 250) { isValid = false; msg = "身長の値（50〜250cm）が正しくありません。"; }
-            else if (v.length < 3) { isValid = false; msg = "身長は3桁以上（例: 170）で入力してください。"; }
+            if (num < 50 || num > 250) { isValid = false; msg = "身長（50〜250cm）が正しくありません。"; }
+            else if (v.length < 3) { isValid = false; msg = "身長は3桁以上で入力してください。"; }
         } else if (el.id === 'weight') {
-            if (num <= 10 || num > 200) { isValid = false; msg = "体重の値（10.1kg〜200kg）が正しくありません。"; }
-            else if (v.length < 2) { isValid = false; msg = "体重は2桁以上（例: 60）で入力してください。"; }
+            if (num <= 10 || num > 200) { isValid = false; msg = "体重（10.1kg〜200kg）が正しくありません。"; }
+            else if (v.length < 2) { isValid = false; msg = "体重は2桁以上で入力してください。"; }
         } else if (el.id === 'grip') {
-            if (num < 5 || num > 100) { isValid = false; msg = "握力の値（5kg〜100kg）が正しくありません。"; }
-            else if (v.length < 1) { isValid = false; msg = "握力を入力してください。"; }
+            if (num < 5 || num > 100) { isValid = false; msg = "握力（5kg〜100kg）が正しくありません。"; }
         }
 
         if (!isValid) {
-            alert(msg);
-            el.value = ""; 
-            setTimeout(() => el.focus(), 10);
-            return;
+            alert(msg); el.value = ""; setTimeout(() => el.focus(), 10); return false;
         }
 
-        // 表示を第1位形式に統一
         el.value = num.toFixed(1);
         if (el.id === 'grip') judgeGrip();
         calcBMI();
+        return true;
     }
 
     function dragStart(e, original, opt, q) {
@@ -146,11 +130,9 @@
                 let colorKey = "blue", colorClass = "ohajiki-blue";
                 const isRed = q.red.includes(opt);
                 if (q.id === "q1" || q.id === "q2" || q.id === "q12") {
-                    colorKey = isRed ? "yellow" : "white";
-                    colorClass = isRed ? "ohajiki-yellow" : "ohajiki-white";
+                    colorKey = isRed ? "yellow" : "white"; colorClass = isRed ? "ohajiki-yellow" : "ohajiki-white";
                 } else {
-                    colorKey = isRed ? "red" : "blue";
-                    colorClass = isRed ? "ohajiki-red" : "ohajiki-blue";
+                    colorKey = isRed ? "red" : "blue"; colorClass = isRed ? "ohajiki-red" : "ohajiki-blue";
                 }
                 document.getElementById('drop-zone').innerHTML = `<div class="placed-ohajiki ${colorClass}">${opt}</div>`;
                 allAnswers[q.id] = opt; colorResults[q.id] = colorKey;
@@ -165,16 +147,29 @@
         const btn = document.getElementById('next-btn');
         if (!btn.classList.contains('visible') || btn.disabled) return;
         if (e.type === 'touchend') e.preventDefault();
-        goNext();
+        
+        // 計測画面なら保存前に全入力を確定させる
+        if (questions[currentIdx].type === "calc") {
+            const inputs = ['grip', 'height', 'weight'];
+            for (let id of inputs) {
+                const el = document.getElementById(id);
+                if (el && el.value && !el.value.includes('.')) {
+                    if (!formatToDecimal(el)) return; // 変換失敗（エラー）なら中断
+                }
+            }
+            // BMIが計算されるまで一瞬待つためのsetTimeout
+            setTimeout(goNext, 100);
+        } else {
+            goNext();
+        }
     }
 
     async function goNext() {
         const btn = document.getElementById('next-btn');
         if (currentIdx === questions.length - 1) {
             const g = document.getElementById('grip'), h = document.getElementById('height'), w = document.getElementById('weight');
-            if (!g.value || !h.value || !w.value) {
-                alert("身体計測をすべて入力してください"); return;
-            }
+            if (!g.value || !h.value || !w.value) { alert("身体計測をすべて入力してください"); return; }
+            
             btn.disabled = true; btn.innerText = "保存中...";
             allAnswers.grip = g.value; allAnswers.bmi = document.getElementById('bmi-val').innerText;
             try {
@@ -183,9 +178,7 @@
                 const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
                 const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
                 form.append(iA, iC); document.body.appendChild(form); form.submit();
-            } catch (e) {
-                alert("保存失敗"); btn.disabled = false; btn.innerText = "次へ";
-            }
+            } catch (e) { alert("保存失敗"); btn.disabled = false; btn.innerText = "次へ"; }
         } else { currentIdx++; render(); }
     }
 
