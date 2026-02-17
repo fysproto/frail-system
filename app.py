@@ -65,10 +65,26 @@ def mypage():
     <a href="/logout" style="color:red; display:block; margin-top:20px;">ログアウト</a>
     </div></body></html>'''
 
+# --- 修正点：同意画面をインラインで表示 ---
 @app.route('/measure')
 def measure():
     if 'credentials' not in session: return redirect(url_for('top'))
+    return '''<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+    body{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}
+    .card{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:500px; margin:auto; text-align:left;}
+    .box{height:150px; overflow-y:scroll; border:1px solid #eee; padding:10px; margin:15px 0; font-size:0.85rem; color:#666;}
+    .btn-start{display:block; width:100%; padding:18px; background:#28a745; color:white; text-align:center; text-decoration:none; border-radius:12px; font-weight:bold;}
+    </style></head><body><div class="card"><h2>測定前の同意</h2>
+    <p>測定結果はご自身のGoogleドライブに保存されます。内容を確認し同意して開始してください。</p>
+    <div class="box">【同意事項】<br>・収集したデータはフレイル判定のみに使用します。<br>・結果は個人の参考用です。<br>・データはご自身のGoogleドライブ「fraildata」フォルダに保存されます。</div>
+    <a href="/start_test" class="btn-start">同意して測定を開始する</a>
+    </div></body></html>'''
+
+@app.route('/start_test')
+def start_test():
+    if 'credentials' not in session: return redirect(url_for('top'))
     return render_template('index.html', gender=session['user_info'].get('gender', '1'))
+# -------------------------------------
 
 @app.route('/save', methods=['POST'])
 def save():
@@ -88,35 +104,26 @@ def save():
 
 @app.route('/result', methods=['POST'])
 def result():
-    # データ受け取り
     answers = json.loads(request.form.get('answers', '{}'))
     colors = json.loads(request.form.get('colors', '{}'))
     user = session.get('user_info', {})
-    gender = user.get('gender', '1')
-
-    # 判定ロジック：赤色（リスク）の数をカウント
-    # 質問系（finger, q1-q15）と計測系（grip, bmi）の合計
+    
+    # リスク数に応じた判定ロジック
     red_count = sum(1 for c in colors.values() if c == 'red')
-
-    # 総合判定メッセージの生成
     if red_count >= 3:
-        status = "フレイル"
-        status_color = "#dc3545"
+        status, status_color = "フレイル", "#dc3545"
     elif red_count >= 1:
-        status = "プレフレイル"
-        status_color = "#ffc107"
+        status, status_color = "プレフレイル", "#ffc107"
     else:
-        status = "健常（堅健）"
-        status_color = "#28a745"
+        status, status_color = "健常（堅健）", "#28a745"
 
     return render_template('result.html', 
                            answers=answers, 
                            colors=colors, 
                            user=user, 
-                           gender=gender,
-                           status=status,
-                           status_color=status_color,
-                           date=datetime.now().strftime('%Y/%m/%d %H:%M'))
+                           status=status, 
+                           status_color=status_color, 
+                           date=datetime.now().strftime('%Y/%m/%d'))
 
 @app.route('/logout')
 def logout():
