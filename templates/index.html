@@ -27,7 +27,7 @@
         .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; }
         .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
-        .input-group input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 1.3rem; text-align: right; letter-spacing: 1px; }
+        .input-group input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 1.3rem; text-align: right; }
     </style>
 </head>
 <body>
@@ -78,11 +78,11 @@
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" placeholder="0.0" oninput="handleKeyStroke(this)" onblur="finalizeInput(this)">
+                <input type="text" id="grip" inputmode="decimal" placeholder="0.0" oninput="movingDecimal(this)" onblur="formatToDecimal(this)">
                 <label>身長 (cm)</label>
-                <input type="text" id="height" inputmode="decimal" placeholder="000.0" oninput="handleKeyStroke(this)" onblur="finalizeInput(this)">
+                <input type="text" id="height" inputmode="decimal" placeholder="000.0" oninput="movingDecimal(this)" onblur="formatToDecimal(this)">
                 <label>体重 (kg)</label>
-                <input type="text" id="weight" inputmode="decimal" placeholder="00.0" oninput="handleKeyStroke(this)" onblur="finalizeInput(this)">
+                <input type="text" id="weight" inputmode="decimal" placeholder="00.0" oninput="movingDecimal(this)" onblur="formatToDecimal(this)">
                 <div style="margin-top:10px; font-weight:bold; border-top:1px solid #eee; padding-top:10px;">
                     BMI: <span id="bmi-val" style="font-size:1.4rem; color:#007bff;">-</span> 
                     <span id="dot-bmi" class="status-dot"></span>
@@ -97,39 +97,40 @@
         }
     }
 
-    // 入力中の「小数点移動」制御
-    function handleKeyStroke(el) {
-        let v = el.value.replace(/\D/g, ""); // 数字以外消す
+    // 小数点が動く入力制御
+    function movingDecimal(el) {
+        let v = el.value.replace(/\D/g, "");
         if (!v) { el.value = ""; return; }
-        // 常に最後から2番目に小数点を入れる動き
-        let num = parseFloat(v) / 10;
-        el.value = num.toFixed(1);
+        el.value = (parseFloat(v) / 10).toFixed(1);
         calcBMI();
     }
 
-    // 確定時の「自動補正」ロジック
-    function finalizeInput(el) {
+    // 自動補正（ありえない数字を直す）
+    function formatToDecimal(el) {
         let v = el.value.replace(/[^-0-9.]/g, "");
         if (!v) return;
         let num = parseFloat(v);
 
-        // 身長が「17.8」など明らかにおかしい（小さすぎる）場合は10倍する
-        if (el.id === 'height' && num < 50) {
-            num = num * 10;
-        } 
-        // 逆に1705など、小数点が消えて巨大化した場合は10で割る（安全策）
-        else if (el.id === 'height' && num > 300) {
-            num = num / 10;
+        if (el.id === 'height') {
+            if (num < 50) num = num * 10; // 17.8 -> 178.0
+            else if (num >= 300) num = num / 10;
+        } else {
+            if (num >= 200) num = num / 10; // 605 -> 60.5
         }
 
-        // 体重・握力の補正（200kg超えなどは10で割る）
-        if ((el.id === 'weight' || el.id === 'grip') && num > 200) {
-            num = num / 10;
+        let isValid = true;
+        if (el.id === 'height' && (num < 50 || num > 250)) isValid = false;
+        else if (el.id === 'weight' && (num < 10 || num > 200)) isValid = false;
+        else if (el.id === 'grip' && (num < 5 || num > 100)) isValid = false;
+
+        if (!isValid) {
+            alert("入力値を確認してください"); el.value = ""; return false;
         }
 
         el.value = num.toFixed(1);
         if (el.id === 'grip') judgeGrip();
         calcBMI();
+        return true;
     }
 
     function dragStart(e, original, opt, q) {
@@ -161,12 +162,14 @@
         if (e.type === 'touchend') e.preventDefault();
         
         if (questions[currentIdx].type === "calc") {
-            ['grip', 'height', 'weight'].forEach(id => {
+            const ids = ['grip', 'height', 'weight'];
+            for (let id of ids) {
                 const el = document.getElementById(id);
-                if (el) finalizeInput(el);
-            });
-            // BMI確定を待ってから次へ
-            setTimeout(goNext, 200);
+                if (el && el.value) { if (!formatToDecimal(el)) return; }
+            }
+            // BMIがちゃんと見えるように少し待機してから保存
+            btn.innerText = "確認中...";
+            setTimeout(goNext, 600);
         } else {
             goNext();
         }
@@ -176,17 +179,33 @@
         const btn = document.getElementById('next-btn');
         if (currentIdx === questions.length - 1) {
             const g = document.getElementById('grip'), h = document.getElementById('height'), w = document.getElementById('weight');
-            if (!g.value || !h.value || !w.value) { alert("計測値を入力してください"); return; }
+            if (!g.value || !h.value || !w.value) { alert("身体計測をすべて入力してください"); return; }
             
             btn.disabled = true; btn.innerText = "保存中...";
-            allAnswers.grip = g.value; allAnswers.bmi = document.getElementById('bmi-val').innerText;
+            allAnswers.grip = g.value; 
+            allAnswers.bmi = document.getElementById('bmi-val').innerText;
+            
             try {
-                await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
-                const form = document.createElement('form'); form.method = 'POST'; form.action = '/result';
-                const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
-                const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
-                form.append(iA, iC); document.body.appendChild(form); form.submit();
-            } catch (e) { alert("保存失敗"); btn.disabled = false; btn.innerText = "次へ"; }
+                // fetchが完了するまでしっかり待つことで「応答しません」を回避
+                const response = await fetch('/save', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(allAnswers) 
+                });
+                
+                if (response.ok) {
+                    const form = document.createElement('form'); 
+                    form.method = 'POST'; form.action = '/result';
+                    const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
+                    const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
+                    form.append(iA, iC); document.body.appendChild(form); form.submit();
+                } else {
+                    throw new Error("Server error");
+                }
+            } catch (e) { 
+                alert("保存に失敗しました。もう一度お試しください。"); 
+                btn.disabled = false; btn.innerText = "次へ"; 
+            }
         } else { currentIdx++; render(); }
     }
 
