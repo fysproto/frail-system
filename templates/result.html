@@ -5,75 +5,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>測定結果</title>
     <style>
-        /* 既存のデザインを完全維持 */
         body { font-family: sans-serif; background: #f0f4f8; margin: 0; padding: 20px; text-align: center; color: #333; }
         .ohajiki-area { background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .ohajiki-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin: 20px 0; min-height: 50px; }
-        .ohajiki { width: 45px; height: 45px; border-radius: 50%; box-shadow: inset -5px -5px 10px rgba(0,0,0,0.2), 3px 5px 10px rgba(0,0,0,0.1); position: relative; }
-        .ohajiki::after { content: ''; position: absolute; top: 15%; left: 15%; width: 30%; height: 30%; background: rgba(255,255,255,0.4); border-radius: 50%; }
         
-        /* おはじきの色設定 */
+        /* おはじきのデザイン */
+        .ohajiki {
+            width: 45px; height: 45px; border-radius: 50%;
+            box-shadow: inset -5px -5px 10px rgba(0,0,0,0.2), 3px 5px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .ohajiki::after {
+            content: ''; position: absolute; top: 15%; left: 15%; width: 30%; height: 30%;
+            background: rgba(255,255,255,0.4); border-radius: 50%;
+        }
+        
+        /* 色の定義 */
         .red { background: radial-gradient(circle at 30% 30%, #ff5f6d, #dc3545); }
         .blue { background: radial-gradient(circle at 30% 30%, #5fafff, #007bff); }
         .yellow { background: radial-gradient(circle at 30% 30%, #fff05f, #ffc107); }
         .white { background: #fff; border: 1px solid #ccc; box-shadow: none; }
+        .white::after { display: none; }
 
-        /* カテゴリーカード */
         .category-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .category-title { font-weight: bold; border-left: 5px solid #28a745; padding-left: 10px; margin-bottom: 10px; color: #28a745; }
         .item-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
         .dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
-        .dot.red { background: #dc3545; } 
-        .dot.blue { background: #007bff; } 
+        .dot.red { background: #dc3545; }
+        .dot.blue { background: #007bff; }
         .dot.yellow { background: #ffc107; }
+        .dot.white { background: #fff; border: 1px solid #ccc; }
+        .dot.gray { background: #adb5bd; }
 
-        /* 追加：Report画面へのボタン */
-        .btn-report { display: block; width: 100%; max-width: 320px; margin: 25px auto; padding: 18px; background: #6c757d; color: white; text-decoration: none; border-radius: 15px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: none; cursor: pointer; }
-        .btn-report:hover { background: #5a6268; }
-
+        /* 追加：一覧表示ボタンのスタイル */
+        .btn-report { display: block; width: 100%; max-width: 300px; margin: 20px auto; padding: 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 1rem; }
         .btn-home { display: inline-block; padding: 15px 40px; background: #007bff; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; margin-top: 10px; }
+        .description { font-size: 0.8rem; color: #666; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <h1 style="color: {{ status_color }}; margin-bottom: 5px;">判定：{{ status }}</h1>
+    <h2>お疲れ様でした！</h2>
     
     <div class="ohajiki-area">
-        <p style="font-weight: bold; margin-bottom:5px;">あなたの「のびしろ」</p>
+        <p style="font-weight: bold; margin-bottom:5px;">あなたの「のびしろ」を確認しましょう</p>
         <div class="ohajiki-container">
             {% set item_list = ['finger','q1','q2','q3','q4','q5','q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','grip','bmi'] %}
             {% for id in item_list %}
                 <div class="ohajiki {{ colors.get(id, 'white') }}"></div>
             {% endfor %}
         </div>
+        <p class="description">※ {{ item_list|length }}項目すべての結果が表示されています</p>
     </div>
 
     <div class="category-card">
         <div class="category-title">筋肉のちから（運動）</div>
-        <div class="item-row">指輪っかテスト <span class="dot {{ colors.get('finger','white') }}"></span></div>
-        <div class="item-row">BMI（体格） <span class="dot {{ colors.get('bmi','white') }}"></span></div>
-        <div class="item-row">握力 <span class="dot {{ colors.get('grip','white') }}"></span></div>
-        <div class="item-row">Q7 歩く速さ <span class="dot {{ colors.get('q7','white') }}"></span></div>
-        <div class="item-row">Q8 転倒の経験 <span class="dot {{ colors.get('q8','white') }}"></span></div>
-        <div class="item-row">Q9 運動の習慣 <span class="dot {{ colors.get('q9','white') }}"></span></div>
+        <div class="item-row">指輪っかテスト <span class="dot {{ colors.get('finger','gray') }}"></span></div>
+        <div class="item-row">BMI（体格） <span class="dot {{ colors.get('bmi','gray') }}"></span></div>
+        <div class="item-row">握力 <span class="dot {{ colors.get('grip','gray') }}"></span></div>
+        <div class="item-row">Q7 歩く速さ <span class="dot {{ colors.get('q7','gray') }}"></span></div>
+        <div class="item-row">Q8 転倒の経験 <span class="dot {{ colors.get('q8','gray') }}"></span></div>
+        <div class="item-row">Q9 運動の習慣 <span class="dot {{ colors.get('q9','gray') }}"></span></div>
     </div>
 
     <div class="category-card">
-        <div class="category-title">お口・栄養・社会参加</div>
-        <div class="item-row">Q4/5 お口の健康 <span class="dot {{ 'red' if (colors.q4=='red' or colors.q5=='red') else 'blue' }}"></span></div>
-        <div class="item-row">Q3/6 栄養・食事 <span class="dot {{ 'red' if (colors.q3=='red' or colors.q6=='red') else 'blue' }}"></span></div>
-        <div class="item-row">Q13-15 社会とのつながり <span class="dot {{ 'red' if (colors.q13=='red' or colors.q14=='red' or colors.q15=='red') else 'blue' }}"></span></div>
+        <div class="category-title">お食事のようす（栄養）</div>
+        <div class="item-row">Q3 3食たべている <span class="dot {{ colors.get('q3','gray') }}"></span></div>
+        <div class="item-row">Q4 噛む力 <span class="dot {{ colors.get('q4','gray') }}"></span></div>
+        <div class="item-row">Q5 むせやすさ <span class="dot {{ colors.get('q5','gray') }}"></span></div>
+        <div class="item-row">Q6 体重の変化 <span class="dot {{ colors.get('q6','gray') }}"></span></div>
     </div>
 
-    <a href="/report" class="btn-report">
-        測定回答の詳細一覧を表示
-    </a>
+    <div class="category-card">
+        <div class="category-title">つながり（社会参加）</div>
+        <div class="item-row">Q13 外出の頻度 <span class="dot {{ colors.get('q13','gray') }}"></span></div>
+        <div class="item-row">Q14 友人との交流 <span class="dot {{ colors.get('q14','gray') }}"></span></div>
+        <div class="item-row">Q15 相談できる人 <span class="dot {{ colors.get('q15','gray') }}"></span></div>
+    </div>
+
+    <div class="category-card">
+        <div class="category-title" style="color: #6c757d; border-left-color: #6c757d;">生活のリズム</div>
+        <div class="item-row">Q10 物忘れの相談 <span class="dot {{ colors.get('q10','gray') }}"></span></div>
+        <div class="item-row">Q11 今日のみちしるべ <span class="dot {{ colors.get('q11','gray') }}"></span></div>
+    </div>
+
+    <div class="category-card" style="background: #f8f9fa; border: 1px dashed #adb5bd;">
+        <div class="category-title" style="color: #6c757d; border-left-color: #adb5bd;">保健師さんとの確認用</div>
+        <div class="item-row">Q1 健康状態 <span class="dot {{ colors.get('q1','gray') }}"></span></div>
+        <div class="item-row">Q2 生活の満足度 <span class="dot {{ colors.get('q2','gray') }}"></span></div>
+        <div class="item-row">Q12 たばこの習慣 <span class="dot {{ colors.get('q12','gray') }}"></span></div>
+    </div>
+
+    <a href="/report" class="btn-report">測定回答の一覧を表示</a>
 
     <a href="/mypage" class="btn-home">マイページへ戻る</a>
-
-    <script>
-        // デバッグ用（必要に応じて）
-        console.log("Answers:", {{ answers|tojson }});
-        console.log("Colors:", {{ colors|tojson }});
-    </script>
 </body>
 </html>
