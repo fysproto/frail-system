@@ -17,8 +17,15 @@
         #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; }
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
         
-        /* ボタンのデザイン */
-        #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; display: none; }
+        /* ボタン設定：visibilityに戻し、pointer-eventsでクリックを制御 */
+        #next-btn { 
+            margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; 
+            background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; 
+            visibility: hidden; pointer-events: none; /* 非表示時はクリック不可 */
+        }
+        #next-btn.visible { 
+            visibility: visible; pointer-events: auto; /* 表示時はクリック許可 */
+        }
         #next-btn:disabled { background: #adb5bd; cursor: not-allowed; }
 
         .ohajiki-blue { background: #007bff; } 
@@ -70,8 +77,12 @@
         dropZone.style.display = q.type === "calc" ? "none" : "flex";
         
         const btn = document.getElementById('next-btn');
-        // 計測画面なら最初から表示、それ以外は非表示にしてリセット
-        btn.style.display = q.type === "calc" ? "block" : "none";
+        // 計測画面なら最初からvisibleクラスを付与
+        if (q.type === "calc") {
+            btn.classList.add('visible');
+        } else {
+            btn.classList.remove('visible');
+        }
         btn.disabled = false;
         btn.innerText = "次へ";
 
@@ -119,8 +130,8 @@
                 document.getElementById('drop-zone').innerHTML = `<div class="placed-ohajiki ${colorClass}">${opt}</div>`;
                 allAnswers[q.id] = opt; colorResults[q.id] = colorKey;
                 
-                // 【修正ポイント】visibilityではなくdisplayを即座に変え、確実に1回で押せるようにする
-                document.getElementById('next-btn').style.display = "block";
+                // クラス付与で表示 ＆ pointer-eventsを有効化
+                document.getElementById('next-btn').classList.add('visible');
             }
             active.remove(); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', end);
         };
@@ -148,7 +159,6 @@
 
     async function goNext() {
         const btn = document.getElementById('next-btn');
-        // 連打対策（どの画面でも一度押したら無効化）
         if (btn.disabled) return;
         btn.disabled = true;
 
