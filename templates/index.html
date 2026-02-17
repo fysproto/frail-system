@@ -17,7 +17,6 @@
         #options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 85px; }
         .seal { width: 85px; height: 85px; border-radius: 50%; background: #fff; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); user-select: none; touch-action: none; font-weight: bold; text-align: center; padding: 5px; box-sizing: border-box; }
         #next-btn { margin-top: 15px; padding: 15px 60px; border-radius: 40px; border: none; background: #28a745; color: white; font-size: 1.4rem; font-weight: bold; visibility: hidden; }
-        #next-btn:disabled { background: #adb5bd; }
         .ohajiki-blue { background: #007bff; } 
         .ohajiki-red { background: #dc3545; } 
         .ohajiki-white { background: #fff; color: #666 !important; border: 1px solid #ccc; }
@@ -35,10 +34,11 @@
 </div>
 <script>
     const gender = "{{ gender|safe }}" || "1";
+    // 変更点：optsの並び順を「はい」「いいえ」で統一
     const questions = [
         { id: "finger", no: "計測", text: "指輪っかテスト", opts: ["囲めない", "ちょうど", "隙間ができる"], type: "logic", blue: ["囲めない", "ちょうど"], red: ["隙間ができる"] },
-        { id: "q1", no: "1", text: "現在の健康状態はいかがですか？", opts: ["よい", "まあよい", "ふつう", "あまりよくない", "よくない"], type: "special", blue: ["よい", "まあよい", "ふつう"], red: ["あまりよくない", "よくない"] },
-        { id: "q2", no: "2", text: "毎日の生活に満足していますか？", opts: ["満足", "やや満足", "やや不満", "不満"], type: "special", blue: ["満足", "やや満足"], red: ["やや不満", "不満"] },
+        { id: "q1", no: "1", text: "現在の健康状態はいかがですか？", opts: ["よい", "まあよい", "ふつう", "あまりよくない", "よくない"], type: "logic", blue: ["よい", "まあよい", "ふつう"], red: ["あまりよくない", "よくない"] },
+        { id: "q2", no: "2", text: "毎日の生活に満足していますか？", opts: ["満足", "やや満足", "やや不満", "不満"], type: "logic", blue: ["満足", "やや満足"], red: ["やや不満", "不満"] },
         { id: "q3", no: "3", text: "1日3食きちんと食べていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
         { id: "q4", no: "4", text: "固いものが食べにくくなりましたか？", opts: ["はい", "いいえ"], type: "logic", blue: ["いいえ"], red: ["はい"] },
         { id: "q5", no: "5", text: "お茶や汁物でむせることがありますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["いいえ"], red: ["はい"] },
@@ -48,7 +48,7 @@
         { id: "q9", no: "9", text: "週1回以上の運動をしていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
         { id: "q10", no: "10", text: "もの忘れがあると言われていますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["いいえ"], red: ["はい"] },
         { id: "q11", no: "11", text: "今日の日付がわからない時がありますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["いいえ"], red: ["はい"] },
-        { id: "q12", no: "12", text: "あなたはたばこを吸いますか？", opts: ["吸わない", "やめた", "吸っている"], type: "special", blue: ["吸わない", "やめた"], red: ["吸っている"] },
+        { id: "q12", no: "12", text: "あなたはたばこを吸いますか？", opts: ["吸わない", "やめた", "吸っている"], type: "logic", blue: ["吸わない", "やめた"], red: ["吸っている"] },
         { id: "q13", no: "13", text: "週に1回以上は外出していますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
         { id: "q14", no: "14", text: "家族や友人と付き合いがありますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
         { id: "q15", no: "15", text: "体調が悪い時に相談できる人がいますか？", opts: ["はい", "いいえ"], type: "logic", blue: ["はい"], red: ["いいえ"] },
@@ -66,9 +66,6 @@
         dropZone.innerHTML = "ここにシールをドラッグ";
         dropZone.style.display = q.type === "calc" ? "none" : "flex";
         document.getElementById('next-btn').style.visibility = q.type === "calc" ? "visible" : "hidden";
-        document.getElementById('next-btn').disabled = false;
-        document.getElementById('next-btn').innerText = "次へ";
-        
         const optsDiv = document.getElementById('options');
         optsDiv.innerHTML = "";
         if (q.type === "calc") {
@@ -101,15 +98,9 @@
             const rect = document.getElementById('drop-zone').getBoundingClientRect();
             const t = ev.changedTouches[0];
             if (t.clientX > rect.left && t.clientX < rect.right && t.clientY > rect.top && t.clientY < rect.bottom) {
-                let colorKey = "white", colorClass = "ohajiki-white";
-                if (q.type === "logic") {
-                    colorKey = q.blue.includes(opt) ? "blue" : "red";
-                    colorClass = colorKey === "blue" ? "ohajiki-blue" : "ohajiki-red";
-                } else if (q.type === "special") {
-                    const isRed = q.red.includes(opt);
-                    colorKey = isRed ? "yellow" : "white";
-                    colorClass = isRed ? "ohajiki-yellow" : "ohajiki-white";
-                }
+                const isBlue = q.blue.includes(opt);
+                const colorKey = isBlue ? "blue" : "red";
+                const colorClass = isBlue ? "ohajiki-blue" : "ohajiki-red";
                 document.getElementById('drop-zone').innerHTML = `<div class="placed-ohajiki ${colorClass}">${opt}</div>`;
                 allAnswers[q.id] = opt; colorResults[q.id] = colorKey;
                 document.getElementById('next-btn').style.visibility = "visible";
@@ -139,18 +130,14 @@
     }
 
     async function goNext() {
-        const btn = document.getElementById('next-btn');
         if (currentIdx === questions.length - 1) {
-            btn.disabled = true; btn.innerText = "保存中...";
-            allAnswers.grip = document.getElementById('grip').value || "0.0";
-            allAnswers.bmi = document.getElementById('bmi-val').innerText || "0.0";
-            try {
-                await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
-                const form = document.createElement('form'); form.method = 'POST'; form.action = '/result';
-                const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
-                const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
-                form.append(iA, iC); document.body.appendChild(form); form.submit();
-            } catch (e) { btn.disabled = false; btn.innerText = "再試行"; }
+            allAnswers.grip = document.getElementById('grip').value;
+            allAnswers.bmi = document.getElementById('bmi-val').innerText;
+            await fetch('/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allAnswers) });
+            const form = document.createElement('form'); form.method = 'POST'; form.action = '/result';
+            const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
+            const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
+            form.append(iA, iC); document.body.appendChild(form); form.submit();
         } else { currentIdx++; render(); }
     }
     render();
