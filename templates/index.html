@@ -78,11 +78,11 @@
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" placeholder="00.0" onblur="formatToDecimal(this)">
+                <input type="text" id="grip" inputmode="decimal" placeholder="例: 25 または 255" onblur="formatToDecimal(this)">
                 <label>身長 (cm)</label>
-                <input type="text" id="height" inputmode="decimal" placeholder="000.0" onblur="formatToDecimal(this)">
+                <input type="text" id="height" inputmode="decimal" placeholder="例: 170 または 1705" onblur="formatToDecimal(this)">
                 <label>体重 (kg)</label>
-                <input type="text" id="weight" inputmode="decimal" placeholder="00.0" onblur="formatToDecimal(this)">
+                <input type="text" id="weight" inputmode="decimal" placeholder="例: 60 または 605" onblur="formatToDecimal(this)">
                 <div>BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
             </div>`;
         } else {
@@ -94,19 +94,33 @@
         }
     }
 
+    // 入力文字数に基づいた自動桁判定ロジック
     function formatToDecimal(el) {
-        let v = el.value.replace(/\D/g, ""); if (!v) return;
-        let num = parseFloat((parseFloat(v) / 10).toFixed(1));
+        let v = el.value.replace(/\D/g, ""); // 数字以外を除去
+        if (!v) return;
 
+        let num;
+        if (el.id === 'height') {
+            // 身長: 3文字以下なら整数(178.0)、4文字以上なら最後を小数(178.5)
+            num = (v.length <= 3) ? parseFloat(v) : parseFloat(v) / 10;
+        } else {
+            // 体重・握力: 2文字以下なら整数(60.0)、3文字以上なら最後を小数(60.5)
+            num = (v.length <= 2) ? parseFloat(v) : parseFloat(v) / 10;
+        }
+
+        // --- バリデーションチェック ---
         let isValid = true;
         let msg = "";
 
         if (el.id === 'height') {
             if (num < 50 || num > 250) { isValid = false; msg = "身長の値（50〜250cm）が正しくありません。"; }
+            else if (v.length < 3) { isValid = false; msg = "身長は3桁以上（例: 170）で入力してください。"; }
         } else if (el.id === 'weight') {
             if (num <= 10 || num > 200) { isValid = false; msg = "体重の値（10.1kg〜200kg）が正しくありません。"; }
+            else if (v.length < 2) { isValid = false; msg = "体重は2桁以上（例: 60）で入力してください。"; }
         } else if (el.id === 'grip') {
             if (num < 5 || num > 100) { isValid = false; msg = "握力の値（5kg〜100kg）が正しくありません。"; }
+            else if (v.length < 1) { isValid = false; msg = "握力を入力してください。"; }
         }
 
         if (!isValid) {
@@ -116,6 +130,7 @@
             return;
         }
 
+        // 表示を第1位形式に統一
         el.value = num.toFixed(1);
         if (el.id === 'grip') judgeGrip();
         calcBMI();
@@ -183,9 +198,11 @@
     }
 
     function calcBMI() {
-        const h = parseFloat(document.getElementById('height').value)/100, w = parseFloat(document.getElementById('weight').value);
-        if (h > 0 && w > 0) {
-            const bmi = (w / (h * h)).toFixed(1);
+        const h_val = parseFloat(document.getElementById('height').value);
+        const w_val = parseFloat(document.getElementById('weight').value);
+        if (h_val > 0 && w_val > 0) {
+            const h_m = h_val / 100;
+            const bmi = (w_val / (h_m * h_m)).toFixed(1);
             document.getElementById('bmi-val').innerText = bmi;
             const isRed = bmi < 21.5;
             document.getElementById('dot-bmi').className = "status-dot " + (isRed ? "bg-red" : "bg-blue");
