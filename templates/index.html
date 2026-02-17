@@ -78,11 +78,11 @@
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" placeholder="0.0" oninput="movingDecimal(this)" onblur="formatToDecimal(this)">
+                <input type="text" id="grip" inputmode="decimal" placeholder="0.0" onblur="formatToDecimal(this)">
                 <label>身長 (cm)</label>
-                <input type="text" id="height" inputmode="decimal" placeholder="000.0" oninput="movingDecimal(this)" onblur="formatToDecimal(this)">
+                <input type="text" id="height" inputmode="decimal" placeholder="000.0" onblur="formatToDecimal(this)">
                 <label>体重 (kg)</label>
-                <input type="text" id="weight" inputmode="decimal" placeholder="00.0" oninput="movingDecimal(this)" onblur="formatToDecimal(this)">
+                <input type="text" id="weight" inputmode="decimal" placeholder="00.0" onblur="formatToDecimal(this)">
                 <div style="margin-top:10px; font-weight:bold; border-top:1px solid #eee; padding-top:10px;">
                     BMI: <span id="bmi-val" style="font-size:1.4rem; color:#007bff;">-</span> 
                     <span id="dot-bmi" class="status-dot"></span>
@@ -97,34 +97,36 @@
         }
     }
 
-    // 小数点が動く入力制御
-    function movingDecimal(el) {
-        let v = el.value.replace(/\D/g, "");
-        if (!v) { el.value = ""; return; }
-        el.value = (parseFloat(v) / 10).toFixed(1);
-        calcBMI();
-    }
-
-    // 自動補正（ありえない数字を直す）
+    // 確定時の「自動補正」ロジックの強化
     function formatToDecimal(el) {
         let v = el.value.replace(/[^-0-9.]/g, "");
         if (!v) return;
+        
+        // すでに小数点が打たれている場合はその数値を尊重
         let num = parseFloat(v);
-
-        if (el.id === 'height') {
-            if (num < 50) num = num * 10; // 17.8 -> 178.0
-            else if (num >= 300) num = num / 10;
-        } else {
-            if (num >= 200) num = num / 10; // 605 -> 60.5
+        
+        // 小数点が含まれていない整数入力の場合の補正
+        if (!v.includes('.')) {
+            if (el.id === 'height') {
+                if (v.length >= 4) num = num / 10; // 1705 -> 170.5
+            } else {
+                if (v.length >= 3) num = num / 10; // 565 -> 56.5
+            }
         }
 
+        // 範囲チェック（体重20kg以下ガード）
         let isValid = true;
-        if (el.id === 'height' && (num < 50 || num > 250)) isValid = false;
-        else if (el.id === 'weight' && (num < 10 || num > 200)) isValid = false;
-        else if (el.id === 'grip' && (num < 5 || num > 100)) isValid = false;
+        let msg = "";
+        if (el.id === 'height') {
+            if (num < 50 || num > 250) { isValid = false; msg = "身長の値を確認してください"; }
+        } else if (el.id === 'weight') {
+            if (num < 20 || num > 200) { isValid = false; msg = "体重の値（20kg以上）を確認してください"; }
+        } else if (el.id === 'grip') {
+            if (num < 5 || num > 100) { isValid = false; msg = "握力の値を確認してください"; }
+        }
 
         if (!isValid) {
-            alert("入力値を確認してください"); el.value = ""; return false;
+            alert(msg); el.value = ""; return false;
         }
 
         el.value = num.toFixed(1);
@@ -167,7 +169,6 @@
                 const el = document.getElementById(id);
                 if (el && el.value) { if (!formatToDecimal(el)) return; }
             }
-            // BMIがちゃんと見えるように少し待機してから保存
             btn.innerText = "確認中...";
             setTimeout(goNext, 600);
         } else {
@@ -179,14 +180,13 @@
         const btn = document.getElementById('next-btn');
         if (currentIdx === questions.length - 1) {
             const g = document.getElementById('grip'), h = document.getElementById('height'), w = document.getElementById('weight');
-            if (!g.value || !h.value || !w.value) { alert("身体計測をすべて入力してください"); return; }
+            if (!g.value || !h.value || !w.value) { alert("計測値をすべて入力してください"); return; }
             
             btn.disabled = true; btn.innerText = "保存中...";
             allAnswers.grip = g.value; 
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
             
             try {
-                // fetchが完了するまでしっかり待つことで「応答しません」を回避
                 const response = await fetch('/save', { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
@@ -220,7 +220,7 @@
     function calcBMI() {
         const h_val = parseFloat(document.getElementById('height').value);
         const w_val = parseFloat(document.getElementById('weight').value);
-        if (h_val > 50 && w_val > 10) {
+        if (h_val > 50 && w_val >= 20) {
             const h_m = h_val / 100;
             const bmi = (w_val / (h_m * h_m)).toFixed(1);
             document.getElementById('bmi-val').innerText = bmi;
