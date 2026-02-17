@@ -78,15 +78,12 @@
         if (q.type === "calc") {
             optsDiv.innerHTML = `<div class="input-group">
                 <label>握力 (kg) <span id="dot-grip" class="status-dot"></span></label>
-                <input type="text" id="grip" inputmode="decimal" placeholder="例: 25 または 255" onblur="formatToDecimal(this)">
+                <input type="text" id="grip" inputmode="decimal" placeholder="例: 25" onblur="formatToDecimal(this)">
                 <label>身長 (cm)</label>
-                <input type="text" id="height" inputmode="decimal" placeholder="例: 170 または 1705" onblur="formatToDecimal(this)">
+                <input type="text" id="height" inputmode="decimal" placeholder="例: 170" onblur="formatToDecimal(this)">
                 <label>体重 (kg)</label>
-                <input type="text" id="weight" inputmode="decimal" placeholder="例: 60 または 605" onblur="formatToDecimal(this)">
-                <div style="margin-top:10px; font-weight:bold; border-top:1px solid #eee; padding-top:10px;">
-                    BMI: <span id="bmi-val" style="font-size:1.4rem; color:#007bff;">-</span> 
-                    <span id="dot-bmi" class="status-dot"></span>
-                </div>
+                <input type="text" id="weight" inputmode="decimal" placeholder="例: 60" onblur="formatToDecimal(this)">
+                <div>BMI: <span id="bmi-val">-</span> <span id="dot-bmi" class="status-dot"></span></div>
             </div>`;
         } else {
             q.opts.forEach(opt => {
@@ -151,15 +148,17 @@
         if (!btn.classList.contains('visible') || btn.disabled) return;
         if (e.type === 'touchend') e.preventDefault();
         
+        // 計測画面なら保存前に全入力を確定させる
         if (questions[currentIdx].type === "calc") {
             const inputs = ['grip', 'height', 'weight'];
             for (let id of inputs) {
                 const el = document.getElementById(id);
                 if (el && el.value && !el.value.includes('.')) {
-                    if (!formatToDecimal(el)) return;
+                    if (!formatToDecimal(el)) return; // 変換失敗（エラー）なら中断
                 }
             }
-            setTimeout(goNext, 150); // BMI表示を確実に見せるため少し長めに待機
+            // BMIが計算されるまで一瞬待つためのsetTimeout
+            setTimeout(goNext, 100);
         } else {
             goNext();
         }
