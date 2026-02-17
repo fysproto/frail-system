@@ -94,23 +94,29 @@
         }
     }
 
-    // フォーカスが外れた（入力が一旦終わった）ときにまとめて小数点化
     function formatToDecimal(el) {
         let v = el.value.replace(/\D/g, ""); if (!v) return;
-        
-        // 身長(height)は3桁以上、その他は2桁以上を期待するガード（簡易版）
-        if (el.id === 'height' && v.length < 3) {
-            alert("身長を正しく入力してください（例: 1650 → 165.0）");
-            el.value = ""; return;
-        }
-        if ((el.id === 'grip' || el.id === 'weight') && v.length < 2) {
-            alert("数値を正しく入力してください");
-            el.value = ""; return;
+        let num = parseFloat((parseFloat(v) / 10).toFixed(1));
+
+        let isValid = true;
+        let msg = "";
+
+        if (el.id === 'height') {
+            if (num < 50 || num > 250) { isValid = false; msg = "身長の値（50〜250cm）が正しくありません。"; }
+        } else if (el.id === 'weight') {
+            if (num <= 10 || num > 200) { isValid = false; msg = "体重の値（10.1kg〜200kg）が正しくありません。"; }
+        } else if (el.id === 'grip') {
+            if (num < 5 || num > 100) { isValid = false; msg = "握力の値（5kg〜100kg）が正しくありません。"; }
         }
 
-        let num = (parseFloat(v) / 10).toFixed(1);
-        el.value = num;
+        if (!isValid) {
+            alert(msg);
+            el.value = ""; 
+            setTimeout(() => el.focus(), 10);
+            return;
+        }
 
+        el.value = num.toFixed(1);
         if (el.id === 'grip') judgeGrip();
         calcBMI();
     }
@@ -150,7 +156,6 @@
     async function goNext() {
         const btn = document.getElementById('next-btn');
         if (currentIdx === questions.length - 1) {
-            // 保存前に未確定の入力がないか最終チェック
             const g = document.getElementById('grip'), h = document.getElementById('height'), w = document.getElementById('weight');
             if (!g.value || !h.value || !w.value) {
                 alert("身体計測をすべて入力してください"); return;
