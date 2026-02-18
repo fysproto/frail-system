@@ -15,21 +15,18 @@
         .yellow { background: radial-gradient(circle at 30% 30%, #fff05f, #ffc107); }
         .white { background: #fff; border: 1px solid #ccc; box-shadow: none; }
         .white::after { display: none; }
-
         .category-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .category-title { font-weight: bold; border-left: 5px solid #28a745; padding-left: 10px; margin-bottom: 10px; color: #28a745; }
         .item-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
         .dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
         .dot.red { background: #dc3545; } .dot.blue { background: #007bff; } .dot.yellow { background: #ffc107; } .dot.white { background: #fff; border: 1px solid #ccc; } .dot.gray { background: #adb5bd; }
-
         .btn-report { display: block; width: 100%; max-width: 320px; margin: 20px auto; padding: 16px; background: #6c757d; color: white; text-decoration: none; border-radius: 15px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .btn-home { display: inline-block; padding: 15px 40px; background: #007bff; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; margin-top: 10px; }
         .description { font-size: 0.8rem; color: #666; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <h2>お疲れ様でした、{{ user.name if user.name else '利用者' }} 様</h2>
-    
+    <h2>お疲れ様でした！</h2>
     <div class="ohajiki-area">
         <p style="font-weight: bold; margin-bottom:5px;">あなたの「のびしろ」を確認しましょう</p>
         <div class="ohajiki-container">
