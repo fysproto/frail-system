@@ -22,7 +22,6 @@
         .eval-blue { background: #007bff; box-shadow: 0 0 4px rgba(0,123,255,0.3); }
 
         .btn-area { text-align: center; margin-top: 30px; }
-        /* 閉じるボタンのデザイン */
         .btn-close { display: inline-block; padding: 12px 40px; background: #6c757d; color: white; text-decoration: none; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 1rem; }
         
         @media print { .no-print { display: none; } }
@@ -34,7 +33,7 @@
             <h1 style="margin:0; font-size: 1.4rem; color: #007bff;">フレイル測定シート</h1>
             <div style="margin-top: 10px;">
                 <span class="info-label">測定日: {{ date }}</span>
-                <span class="info-label">利用者様</span>
+                <span class="info-label">氏名: {{ user.name if user else '未登録' }} 様</span>
             </div>
         </div>
 
