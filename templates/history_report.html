@@ -5,84 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>比較レポート</title>
     <style>
-        body { font-family: sans-serif; background: #f0f4f8; margin: 0; padding: 20px 20px 100px 20px; color: #333; }
+        body { font-family: sans-serif; background: #f0f4f8; margin: 0; padding: 20px 20px 100px 20px; }
         .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 600px; margin: auto; }
-        h2 { text-align: center; color: #007bff; margin-top: 0; }
+        h2 { text-align: center; color: #007bff; }
         .info { text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        
         .item { display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; border-bottom: 1px solid #eee; }
-        .label { font-weight: bold; font-size: 1rem; flex: 1; }
-        .val { font-size: 1rem; margin-right: 15px; }
-        
-        /* おはじき（円）のスタイル */
-        .circle { width: 24px; height: 24px; border-radius: 50%; display: inline-block; border: 1px solid #ddd; }
-        .blue { background-color: #007bff; }
-        .red { background-color: #dc3545; }
-        .yellow { background-color: #ffc107; }
-        .white { background-color: #fff; }
-        .gray { background-color: #bbb; }
-
-        /* 網掛け（背景色）のスタイル */
-        .bg-better { background-color: #e7f3ff !important; } /* 薄い青：改善 */
-        .bg-worse { background-color: #fff2f2 !important; }  /* 薄い赤：注意 */
-
-        /* 下部固定ナビ */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(240, 244, 248, 0.9); padding: 15px 0; text-align: center; backdrop-filter: blur(5px); }
+        .label { font-weight: bold; flex: 1; }
+        .val { margin-right: 15px; }
+        .circle { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ddd; }
+        .blue { background-color: #007bff; } .red { background-color: #dc3545; } .yellow { background-color: #ffc107; } .gray { background-color: #bbb; }
+        .bg-better { background-color: #e7f3ff !important; }
+        .bg-worse { background-color: #fff2f2 !important; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(240, 244, 248, 0.9); padding: 15px 0; text-align: center; }
         .btn-back { display: inline-block; padding: 12px 60px; background: #6c757d; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; }
     </style>
 </head>
 <body>
-
 <div class="card">
     <h2>測定結果比較</h2>
-    <div class="info">
-        対象日: {{ curr.date }}<br>
-        {% if prev %}
-            比較日: {{ prev.date }}（前回比）
-        {% else %}
-            比較データなし（初回測定）
-        {% endif %}
-    </div>
-
+    <div class="info">対象: {{ curr.date }}<br>{% if prev %}比較: {{ prev.date }}{% else %}初回データ{% endif %}</div>
     {% set items = [
-        ('finger', '指輪っかテスト'), ('bmi', 'BMI'), ('grip', '握力'),
-        ('q1', '階段を上がる'), ('q2', '椅子から立ち上がる'), ('q3', '15分歩く'),
-        ('q4', 'この1年で転倒'), ('q5', '転倒の不安'), ('q6', '半年で2-3kg減'),
-        ('q7', 'お茶でむせる'), ('q8', '口の渇き'), ('q9', '硬いものが噛めない'),
-        ('q10', '週1回以上外出'), ('q11', '昨日何食べた？'), ('q12', '周りから物忘れ指摘'),
-        ('q13', '気分が沈む'), ('q14', '何をするのも面倒'), ('q15', '毎日が充実')
+        ('finger','指輪っか'), ('bmi','BMI'), ('grip','握力'),
+        ('q1','Q1.階段を上がる'), ('q2','Q2.椅子から立ち上がる'), ('q3','Q3.15分歩く'),
+        ('q4','Q4.この1年で転倒'), ('q5','Q5.転倒の不安'), ('q6','Q6.半年で2-3kg減'),
+        ('q7','Q7.お茶でむせる'), ('q8','Q8.口の渇き'), ('q9','Q9.硬いものが噛めない'),
+        ('q10','Q10.週1回以上外出'), ('q11','Q11.昨日何食べた？'), ('q12','Q12.周りから物忘れ指摘'),
+        ('q13','Q13.気分が沈む'), ('q14','Q14.何をするのも面倒'), ('q15','Q15.毎日が充実')
     ] %}
-
     {% for key, label in items %}
         {% set c_col = curr.colors.get(key, 'white') %}
         {% set p_col = prev.colors.get(key, 'white') if prev else 'white' %}
-        
-        {# 網掛け判定ロジック #}
-        {% set bg_class = '' %}
-        {% if prev %}
-            {% if p_col == 'red' and c_col == 'blue' %}
-                {% set bg_class = 'bg-better' %}
-            {% elif p_col == 'blue' and c_col == 'red' %}
-                {% set bg_class = 'bg-worse' %}
-            {% endif %}
-        {% endif %}
-
-        <div class="item {{ bg_class }}">
+        {% set bg = '' %}
+        {% if prev %}{% if p_col == 'red' and c_col == 'blue' %}{% set bg = 'bg-better' %}{% elif p_col == 'blue' and c_col == 'red' %}{% set bg = 'bg-worse' %}{% endif %}{% endif %}
+        <div class="item {{ bg }}">
             <span class="label">{{ label }}</span>
-            <span class="val">
-                {% if key == 'bmi' %}{{ curr.answers.get('bmi') }}
-                {% elif key == 'grip' %}{{ curr.answers.get('grip') }}kg
-                {% else %}{{ 'はい' if curr.answers.get(key)=='1' else 'いいえ' }}
-                {% endif %}
-            </span>
+            <span class="val">{% if key=='bmi' %}{{curr.answers.get('bmi')}}{% elif key=='grip' %}{{curr.answers.get('grip')}}kg{% else %}{{ 'はい' if curr.answers.get(key)=='1' else 'いいえ' }}{% endif %}</span>
             <span class="circle {{ c_col }}"></span>
         </div>
     {% endfor %}
 </div>
-
-<div class="bottom-nav">
-    <a href="/history_list" class="btn-back">一覧に戻る</a>
-</div>
-
+<div class="bottom-nav"><a href="/history_list" class="btn-back">一覧に戻る</a></div>
 </body>
 </html>
