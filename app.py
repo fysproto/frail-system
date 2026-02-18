@@ -24,6 +24,7 @@ CLIENT_CONFIG = {
 }
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
+# --- セキュリティ：暗号化ロジック ---
 def encrypt_data(data_dict):
     return base64.b64encode(json.dumps(data_dict).encode()).decode()
 
@@ -31,7 +32,7 @@ def decrypt_data(enc_str):
     try: return json.loads(base64.b64decode(enc_str.encode()).decode())
     except: return None
 
-# --- 判定ロジック（設問順を維持） ---
+# --- 判定ロジック（Ver.4と同一基準・設問順） ---
 def judge_colors(answers, gender):
     c = {}
     f = answers.get('finger')
@@ -164,7 +165,7 @@ def report():
     if not data: return redirect(url_for('mypage'))
     return render_template('report.html', **data, user=user)
 
-# --- 過去履歴機能 ---
+# --- 過去履歴機能（堅牢化版） ---
 @app.route('/history_list')
 def history_list():
     if 'credentials' not in session: return redirect(url_for('top'))
@@ -173,56 +174,70 @@ def history_list():
 @app.route('/api/get_history')
 def api_get_history():
     if 'credentials' not in session: return jsonify([])
-    page = int(request.args.get('page', 0))
-    creds = Credentials(**session['credentials'])
-    service = build('drive', 'v3', credentials=creds)
-    q_f = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
-    folders = service.files().list(q=q_f).execute().get('files', [])
-    if not folders: return jsonify([])
-    q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
-    # pageを使って10件ずつ取得
-    results = service.files().list(q=q_csv, orderBy="createdTime desc", pageSize=10, fields="files(id, name, createdTime)").execute()
-    files = results.get('files', [])
-    history_data = []
-    days_map = ["月", "火", "水", "木", "金", "土", "日"]
-    for f in files:
-        dt = datetime.fromisoformat(f['createdTime'].replace('Z', '+00:00'))
-        day_jp = days_map[dt.weekday()]
-        display_date = dt.strftime(f'%Y年%m月%d日({day_jp}) %H:%M')
-        history_data.append({"id": f['id'], "display_date": display_date})
-    return jsonify(history_data)
+    try:
+        page = int(request.args.get('page', 0))
+        creds = Credentials(**session['credentials'])
+        service = build('drive', 'v3', credentials=creds)
+        q_f = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+        folders = service.files().list(q=q_f, fields="files(id)").execute().get('files', [])
+        if not folders: return jsonify([])
+        q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
+        results = service.files().list(q=q_csv, orderBy="createdTime desc", pageSize=10, fields="files(id, name, createdTime)").execute()
+        files = results.get('files', [])
+        history_data = []
+        days_map = ["月", "火", "水", "木", "金", "土", "日"]
+        for f in files:
+            raw_time = f.get('createdTime', '').replace('Z', '+00:00')
+            if not raw_time: continue
+            dt = datetime.fromisoformat(raw_time)
+            day_jp = days_map[dt.weekday()]
+            display_date = dt.strftime(f'%Y年%m月%d日({day_jp}) %H:%M')
+            history_data.append({"id": f['id'], "display_date": display_date})
+        return jsonify(history_data)
+    except Exception as e:
+        print(f"History API Error: {e}")
+        return jsonify([])
 
 @app.route('/history_view')
 def history_view():
     if 'credentials' not in session: return redirect(url_for('top'))
     tid = request.args.get('id')
-    creds = Credentials(**session['credentials'])
-    service = build('drive', 'v3', credentials=creds)
-    def get_data(fid):
-        if not fid: return None
-        c = service.files().get_media(fileId=fid).execute().decode('utf-8-sig')
-        r = csv.reader(io.StringIO(c))
-        d = {"answers": {}}
-        for row in r:
-            if len(row) < 2: continue
-            if row[0] == "Date": d["date"] = row[1]
-            elif row[0] == "Gender": d["gender"] = row[1]
-            else: d["answers"][row[0]] = row[1]
-        d["colors"] = judge_colors(d["answers"], d.get("gender", "1"))
-        return d
-    curr = get_data(tid)
-    q_f = "name = 'fraildata' and trashed = false"
-    folders = service.files().list(q=q_f).execute().get('files', [])
-    prev = None
-    if folders:
-        q_csv = f"'{folders[0]['id']}' in parents and trashed = false"
-        all_f = service.files().list(q=q_csv, orderBy="createdTime desc", fields="files(id)").execute().get('files', [])
-        for i, f in enumerate(all_f):
-            if f['id'] == tid and i + 1 < len(all_f):
-                prev = get_data(all_f[i+1]['id'])
-                break
-    user = session.get('user_info', {})
-    return render_template('history_report.html', curr=curr, prev=prev, user=user)
+    if not tid: return redirect(url_for('history_list'))
+    try:
+        creds = Credentials(**session['credentials'])
+        service = build('drive', 'v3', credentials=creds)
+        def get_data(fid):
+            if not fid: return None
+            try:
+                c = service.files().get_media(fileId=fid).execute().decode('utf-8-sig')
+                r = csv.reader(io.StringIO(c))
+                d = {"answers": {}}
+                for row in r:
+                    if len(row) < 2: continue
+                    if row[0] == "Date": d["date"] = row[1]
+                    elif row[0] == "Gender": d["gender"] = row[1]
+                    else: d["answers"][row[0]] = row[1]
+                u_info = session.get('user_info', {})
+                d["colors"] = judge_colors(d["answers"], d.get("gender", u_info.get("gender", "1")))
+                return d
+            except: return None
+        curr = get_data(tid)
+        if not curr: return "データの読み込みに失敗しました", 404
+        q_f = "name = 'fraildata' and trashed = false"
+        folders = service.files().list(q=q_f, fields="files(id)").execute().get('files', [])
+        prev = None
+        if folders:
+            q_csv = f"'{folders[0]['id']}' in parents and trashed = false"
+            all_f = service.files().list(q=q_csv, orderBy="createdTime desc", fields="files(id)").execute().get('files', [])
+            for i, f in enumerate(all_f):
+                if f['id'] == tid and i + 1 < len(all_f):
+                    prev = get_data(all_f[i+1]['id'])
+                    break
+        user = session.get('user_info', {})
+        return render_template('history_report.html', curr=curr, prev=prev, user=user)
+    except Exception as e:
+        print(f"History View Error: {e}")
+        return redirect(url_for('history_list'))
 
 @app.route('/logout')
 def logout():
