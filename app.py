@@ -24,7 +24,6 @@ CLIENT_CONFIG = {
 }
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-# --- セキュリティ：暗号化ロジック ---
 def encrypt_data(data_dict):
     return base64.b64encode(json.dumps(data_dict).encode()).decode()
 
@@ -32,29 +31,24 @@ def decrypt_data(enc_str):
     try: return json.loads(base64.b64decode(enc_str.encode()).decode())
     except: return None
 
-# --- 判定ロジックの共通化 (Ver.4の基準を維持) ---
+# --- 判定ロジック（設問順を維持） ---
 def judge_colors(answers, gender):
     c = {}
-    # 指輪っか
     f = answers.get('finger')
     c['finger'] = 'blue' if f=='0' else ('red' if f=='2' else 'yellow')
-    # BMI
     try:
         bmi = float(answers.get('bmi', 0))
         c['bmi'] = 'blue' if bmi >= 20 else 'red'
     except: c['bmi'] = 'gray'
-    # 握力
     try:
         g = float(answers.get('grip', 0))
         if gender == '1': c['grip'] = 'blue' if g >= 28 else 'red'
         else: c['grip'] = 'blue' if g >= 18 else 'red'
     except: c['grip'] = 'gray'
-    # 質問票 Q1-Q15
     for i in range(1, 16):
         qid = f'q{i}'
         v = answers.get(qid)
-        if i in [1,12]: c[qid] = 'blue' if v=='0' else 'yellow'
-        elif i == 2: c[qid] = 'blue' if v=='0' else 'red'
+        if i in [1, 12]: c[qid] = 'blue' if v=='0' else 'yellow'
         else: c[qid] = 'blue' if v=='0' else 'red'
     return c
 
@@ -186,12 +180,16 @@ def api_get_history():
     folders = service.files().list(q=q_f).execute().get('files', [])
     if not folders: return jsonify([])
     q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
+    # pageを使って10件ずつ取得
     results = service.files().list(q=q_csv, orderBy="createdTime desc", pageSize=10, fields="files(id, name, createdTime)").execute()
     files = results.get('files', [])
     history_data = []
+    days_map = ["月", "火", "水", "木", "金", "土", "日"]
     for f in files:
         dt = datetime.fromisoformat(f['createdTime'].replace('Z', '+00:00'))
-        history_data.append({"id": f['id'], "display_date": dt.strftime('%Y年 %m月 %d日 (%a)')})
+        day_jp = days_map[dt.weekday()]
+        display_date = dt.strftime(f'%Y年%m月%d日({day_jp}) %H:%M')
+        history_data.append({"id": f['id'], "display_date": display_date})
     return jsonify(history_data)
 
 @app.route('/history_view')
@@ -200,7 +198,6 @@ def history_view():
     tid = request.args.get('id')
     creds = Credentials(**session['credentials'])
     service = build('drive', 'v3', credentials=creds)
-
     def get_data(fid):
         if not fid: return None
         c = service.files().get_media(fileId=fid).execute().decode('utf-8-sig')
@@ -213,9 +210,7 @@ def history_view():
             else: d["answers"][row[0]] = row[1]
         d["colors"] = judge_colors(d["answers"], d.get("gender", "1"))
         return d
-
     curr = get_data(tid)
-    # 直前のデータを探す
     q_f = "name = 'fraildata' and trashed = false"
     folders = service.files().list(q=q_f).execute().get('files', [])
     prev = None
@@ -226,7 +221,6 @@ def history_view():
             if f['id'] == tid and i + 1 < len(all_f):
                 prev = get_data(all_f[i+1]['id'])
                 break
-    
     user = session.get('user_info', {})
     return render_template('history_report.html', curr=curr, prev=prev, user=user)
 
