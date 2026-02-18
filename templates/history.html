@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>過去の履歴</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f4f8; margin: 0; padding: 20px 20px 100px 20px; color: #333; }
+        h2 { text-align: center; color: #007bff; }
+        
+        .history-list { margin-top: 20px; }
+        
+        /* 履歴の1行：大きく、押しやすく */
+        .history-item { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 15px; 
+            margin-bottom: 12px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+        }
+        .history-item:active { background: #e9ecef; }
+        
+        .date-text { font-size: 1.2rem; font-weight: bold; }
+        .arrow { color: #ccc; font-size: 1.5rem; }
+
+        /* 「もっと見る」ボタン */
+        .btn-more { 
+            display: block; 
+            width: 100%; 
+            padding: 15px; 
+            background: #fff; 
+            border: 2px solid #007bff; 
+            color: #007bff; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            text-align: center; 
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        /* 画面下に固定される戻るボタンエリア */
+        .bottom-nav { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            background: rgba(240, 244, 248, 0.9); 
+            padding: 15px 0; 
+            text-align: center; 
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            backdrop-filter: blur(5px);
+        }
+        .btn-back { 
+            display: inline-block; 
+            padding: 12px 60px; 
+            background: #6c757d; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 30px; 
+            font-weight: bold; 
+            font-size: 1rem; 
+        }
+    </style>
+</head>
+<body>
+
+    <h2>過去の測定履歴</h2>
+    <p style="text-align:center; font-size: 0.9rem; color: #666;">見たい日付を選んでください</p>
+
+    <div id="history-container" class="history-list">
+        </div>
+
+    <button id="load-more" class="btn-more" style="display:none;" onclick="loadHistory()">以前の履歴をもっと見る</button>
+
+    <div class="bottom-nav">
+        <a href="/mypage" class="btn-back">マイページへ戻る</a>
+    </div>
+
+    <script>
+        let currentPage = 0;
+
+        async function loadHistory() {
+            const btn = document.getElementById('load-more');
+            btn.innerText = "読み込み中...";
+            
+            try {
+                const response = await fetch(`/api/get_history?page=${currentPage}`);
+                const data = await response.json();
+                
+                if (data.length === 0 && currentPage === 0) {
+                    document.getElementById('history-container').innerHTML = "<p style='text-align:center;'>履歴がありません</p>";
+                    btn.style.display = "none";
+                    return;
+                }
+
+                const container = document.getElementById('history-container');
+                data.forEach(item => {
+                    const row = document.createElement('a');
+                    row.className = 'history-item';
+                    row.href = `/history_view?id=${item.id}`;
+                    row.innerHTML = `
+                        <span class="date-text">${item.display_date}</span>
+                        <span class="arrow">＞</span>
+                    `;
+                    container.appendChild(row);
+                });
+
+                // 10件取得できたら「もっと見る」を表示
+                if (data.length === 10) {
+                    btn.style.display = "block";
+                    btn.innerText = "以前の履歴をもっと見る";
+                    currentPage++;
+                } else {
+                    btn.style.display = "none";
+                }
+            } catch (e) {
+                console.error("履歴の取得に失敗しました", e);
+                btn.innerText = "エラー：再試行する";
+            }
+        }
+
+        // 初回読み込み
+        loadHistory();
+    </script>
+</body>
+</html>
