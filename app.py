@@ -43,13 +43,45 @@ def callback():
     flow.fetch_token(code=request.args.get('code'))
     creds = flow.credentials
     session['credentials'] = {'token': creds.token, 'refresh_token': creds.refresh_token, 'token_uri': creds.token_uri, 'client_id': creds.client_id, 'client_secret': creds.client_secret, 'scopes': creds.scopes}
+    # 原版のセッション初期値を維持。ここからプロフィール設定に促す形にするわ
     session['user_info'] = {"name": "利用者様", "gender": "1"} 
     return redirect(url_for('mypage'))
+
+# プロフィール編集機能を追加（原版の機能を損なわず拡張）
+@app.route('/profile_edit', methods=['GET', 'POST'])
+def profile_edit():
+    if 'credentials' not in session: return redirect(url_for('top'))
+    if request.method == 'POST':
+        session['user_info'] = {
+            "name": request.form.get('name', '利用者様'),
+            "gender": request.form.get('gender', '1')
+        }
+        return redirect(url_for('mypage'))
+    u = session.get('user_info', {})
+    return f'''
+    <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+    body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}
+    .card{{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:400px; margin:auto; text-align:left;}}
+    input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;}}
+    .btn{{display:block; width:100%; padding:15px; background:#007bff; color:white; border:none; border-radius:12px; font-weight:bold; cursor:pointer;}}
+    </style></head><body><div class="card">
+    <h2>プロフィール設定</h2>
+    <form method="post">
+        名前: <input type="text" name="name" value="{u.get('name', '')}" required>
+        性別: <select name="gender">
+            <option value="1" {"selected" if u.get('gender')=='1' else ""}>男性</option>
+            <option value="2" {"selected" if u.get('gender')=='2' else ""}>女性</option>
+        </select>
+        <button type="submit" class="btn">保存する</button>
+    </form>
+    <a href="/mypage" style="display:block; text-align:center; margin-top:15px; color:#666;">戻る</a>
+    </div></body></html>'''
 
 @app.route('/mypage')
 def mypage():
     if 'credentials' not in session: return redirect(url_for('top'))
     u = session.get('user_info', {})
+    # 原版のデザインを維持しつつ、プロフィール変更への入り口だけをスマートに追加
     return f'''
     <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
     body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}
@@ -61,6 +93,7 @@ def mypage():
     <h2>マイページ</h2><p>こんにちは、{u.get('name')} さん</p>
     <a href="/measure" class="btn btn-main">測定を開始する</a>
     <a href="https://drive.google.com/" target="_blank" class="btn btn-history">過去の履歴を見る</a>
+    <a href="/profile_edit" style="color:#007bff; display:block; margin-top:10px; font-size:0.9rem; text-decoration:none;">プロフィールを変更する</a>
     <a href="/logout" style="color:red; display:block; margin-top:20px;">ログアウト</a>
     </div></body></html>'''
 
@@ -105,21 +138,16 @@ def result():
     answers = json.loads(request.form.get('answers', '{}'))
     colors = json.loads(request.form.get('colors', '{}'))
     user = session.get('user_info', {})
-    
-    session['report_data'] = {
-        'answers': answers, 
-        'colors': colors, 
-        'date': datetime.now().strftime('%Y/%m/%d %H:%M')
-    }
+    session['report_data'] = {'answers': answers, 'colors': colors, 'date': datetime.now().strftime('%Y/%m/%d %H:%M')}
     return render_template('result.html', answers=answers, colors=colors, user=user)
 
 @app.route('/report')
 def report():
     if 'credentials' not in session: return redirect(url_for('top'))
     data = session.get('report_data')
-    user = session.get('user_info', {}) # これを追加して名前データを取得
+    user = session.get('user_info', {}) # 名前を表示するためにuser情報もしっかり取得
     if not data: return redirect(url_for('mypage'))
-    # dataを展開しつつ、userオブジェクトも明示的に渡すわ
+    # 原版のデータ展開を維持しつつ、userを明示的に渡す
     return render_template('report.html', **data, user=user)
 
 @app.route('/logout')
