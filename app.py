@@ -27,8 +27,10 @@ def encrypt_data(data_dict):
     return base64.b64encode(json.dumps(data_dict).encode()).decode()
 
 def decrypt_data(enc_str):
-    try: return json.loads(base64.b64decode(enc_str.encode()).decode())
-    except: return None
+    try:
+        return json.loads(base64.b64decode(enc_str.encode()).decode())
+    except:
+        return None
 
 @app.route('/')
 def top():
@@ -51,9 +53,15 @@ def callback():
     flow.redirect_uri = url_for('callback', _external=True)
     flow.fetch_token(code=request.args.get('code'))
     creds = flow.credentials
-    session['credentials'] = {'token': creds.token, 'refresh_token': creds.refresh_token, 'token_uri': creds.token_uri, 'client_id': creds.client_id, 'client_secret': creds.client_secret, 'scopes': creds.scopes}
+    session['credentials'] = {
+        'token': creds.token,
+        'refresh_token': creds.refresh_token,
+        'token_uri': creds.token_uri,
+        'client_id': creds.client_id,
+        'client_secret': creds.client_secret,
+        'scopes': creds.scopes
+    }
     
-    # Driveから暗号化プロフィールを検索
     try:
         service = build('drive', 'v3', credentials=creds)
         files = service.files().list(q="name = 'profile_enc.dat' and trashed = false").execute().get('files', [])
@@ -63,9 +71,9 @@ def callback():
             if u:
                 session['user_info'] = u
                 return redirect(url_for('mypage'))
-    except: pass
+    except:
+        pass
     
-    # プロフィールがない場合は初回登録画面へ
     return redirect(url_for('profile_edit'))
 
 @app.route('/profile_edit', methods=['GET', 'POST'])
@@ -89,7 +97,8 @@ def profile_edit():
                 service.files().update(fileId=files[0]['id'], media_body=media).execute()
             else:
                 service.files().create(body={'name': 'profile_enc.dat'}, media_body=media).execute()
-        except: pass
+        except:
+            pass
         return redirect(url_for('mypage'))
 
     u = session.get('user_info', {})
@@ -118,7 +127,10 @@ def profile_edit():
     <h2>プロフィール設定</h2>
     <form method="post">
         名前: <input type="text" name="name" value="{u.get('name','')}" required placeholder="お名前">
-        性別: <select name="gender"><option value="1" {"selected" if u.get('gender')=='1' else ""}>男性</option><option value="2" {"selected" if u.get('gender')=='2' else ""}>女性</option></select>
+        性別: <select name="gender">
+            <option value="1" {"selected" if u.get('gender')=='1' else ""}>男性</option>
+            <option value="2" {"selected" if u.get('gender')=='2' else ""}>女性</option>
+        </select>
         生年月日: <div style="display:flex; gap:5px;"><select name="birth_y">{y_opts}</select><select name="birth_m">{m_opts}</select><select name="birth_d">{d_opts}</select></div>
         郵便番号: <input type="text" name="zip" value="{u.get('zip','')}" placeholder="123-4567">
         <button type="button" class="btn" onclick="saveProfile(this)">保存してマイページへ</button>
@@ -175,7 +187,6 @@ def save():
         folders = service.files().list(q=q).execute().get('files', [])
         f_id = folders[0]['id'] if folders else service.files().create(body={'name': 'fraildata', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
         
-        # ユーザー情報をCSVヘッダーに含める
         csv_content = f"Date,{datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
         csv_content += f"Name,{u.get('name')}\nGender,{u.get('gender')}\nBirth,{u.get('birth')}\nZip,{u.get('zip')}\n"
         for k, v in data.items(): csv_content += f"{k},{v}\n"
@@ -183,7 +194,8 @@ def save():
         media = MediaInMemoryUpload(csv_content.encode('utf-8-sig'), mimetype='text/csv')
         service.files().create(body={'name': f"測定_{u.get('name')}_{datetime.now().strftime('%m%d_%H%M')}.csv", 'parents': [f_id]}, media_body=media).execute()
         return jsonify({"status": "success"})
-    except Exception as e: return jsonify({"status": "error", "message": str(e)}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/result', methods=['POST'])
 def result():
@@ -199,7 +211,7 @@ def report():
     data = session.get('report_data')
     user = session.get('user_info', {})
     if not data: return redirect(url_for('mypage'))
-    return render_template('report.html', **data, user=user)unn
+    return render_template('report.html', **data, user=user)
 
 @app.route('/logout')
 def logout():
