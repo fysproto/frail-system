@@ -113,7 +113,7 @@ def profile_edit():
         body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}
         .card{{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:400px; margin:auto; text-align:left;}}
         input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ccc; border-radius:8px; box-sizing:border-box; font-size:16px;}}
-        .btn{{display:block; width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:12px; font-weight:bold; cursor:pointer;}}
+        .btn{{display:block; width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:12px; font-weight:bold; cursor:pointer; box-sizing:border-box;}}
         .btn:disabled{{background:#6c757d; cursor:not-allowed;}}
     </style>
     <script>
@@ -160,9 +160,9 @@ def measure():
     if 'credentials' not in session: return redirect(url_for('top'))
     return '''<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
     body{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}
-    .card{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:500px; margin:auto; text-align:left;}
+    .card{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:500px; margin:auto; text-align:left; box-sizing:border-box;}
     .box{height:150px; overflow-y:scroll; border:1px solid #eee; padding:10px; margin:15px 0; font-size:0.85rem; color:#666;}
-    .btn-start{display:block; width:100%; padding:18px; background:#28a745; color:white; text-align:center; text-decoration:none; border-radius:12px; font-weight:bold;}
+    .btn-start{display:block; width:100%; padding:18px; background:#28a745; color:white; text-align:center; text-decoration:none; border-radius:12px; font-weight:bold; box-sizing:border-box;}
     </style></head><body><div class="card"><h2>測定前の同意</h2>
     <p>測定結果はご自身のGoogleドライブに保存されます。内容を確認し同意して開始してください。</p>
     <div class="box">【同意事項】<br>・収集したデータはフレイル判定のみに使用します。<br>・結果は個人の参考用です。<br>・データはご自身のGoogleドライブ「fraildata」フォルダに保存されます。</div>
