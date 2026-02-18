@@ -18,10 +18,12 @@
         .a-text { font-size: 0.85rem; color: #007bff; display: block; margin-top: 4px; padding-left: 2px; }
         
         .eval-icon { width: 22px; height: 22px; border-radius: 50%; margin: auto; }
-        /* 4色定義を完全網羅 */
+        
+        /* --- 判定カラーの完全定義 --- */
         .eval-red { background: #dc3545; box-shadow: 0 0 4px rgba(220,53,69,0.3); }
         .eval-blue { background: #007bff; box-shadow: 0 0 4px rgba(0,123,255,0.3); }
         .eval-yellow { background: #ffc107; box-shadow: 0 0 4px rgba(255,193,7,0.3); }
+        /* 白（良好）はグレーの枠を付けて「白」とわかるように */
         .eval-white { background: #fff; border: 1px solid #ccc; }
 
         .btn-area { text-align: center; margin-top: 30px; }
@@ -57,6 +59,7 @@
     </div>
 
     <script>
+        // Python(app.py)側から渡されるデータをJSに変換
         const answers = {{ answers|tojson }};
         const colors = {{ colors|tojson }};
         
@@ -86,7 +89,8 @@
         qData.forEach(q => {
             const color = colors[q.id] || 'white';
             
-            // color に応じてクラス名を決定 (eval-red, eval-blue, eval-yellow, eval-white)
+            // 修正の肝：app.pyが返すすべての色（red, blue, yellow, white）を
+            // CSSクラス（eval-red, eval-blue, eval-yellow, eval-white）に直結させる
             const iconClass = 'eval-' + color;
             
             tbody.innerHTML += `
