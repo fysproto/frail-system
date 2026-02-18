@@ -33,7 +33,7 @@
             <h1 style="margin:0; font-size: 1.4rem; color: #007bff;">フレイル測定シート</h1>
             <div style="margin-top: 10px;">
                 <span class="info-label">測定日: {{ date }}</span>
-                <span class="info-label">氏名: {{ user.name if user else '未登録' }} 様</span>
+                <span class="info-label">氏名: {{ user.name if user.name else '利用者様' }} 様</span>
             </div>
         </div>
 
