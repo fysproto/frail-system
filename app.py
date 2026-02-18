@@ -22,14 +22,12 @@ CLIENT_CONFIG = {
 }
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-# --- プロフィール暗号化（簡易）/復号関数 ---
+# --- 指示に基づいた暗号化保持ロジック ---
 def encrypt_data(data_dict):
-    json_str = json.dumps(data_dict)
-    return base64.b64encode(json_str.encode()).decode()
+    return base64.b64encode(json.dumps(data_dict).encode()).decode()
 
 def decrypt_data(enc_str):
-    try:
-        return json.loads(base64.b64decode(enc_str.encode()).decode())
+    try: return json.loads(base64.b64decode(enc_str.encode()).decode())
     except: return None
 
 @app.route('/')
@@ -55,11 +53,10 @@ def callback():
     creds = flow.credentials
     session['credentials'] = {'token': creds.token, 'refresh_token': creds.refresh_token, 'token_uri': creds.token_uri, 'client_id': creds.client_id, 'client_secret': creds.client_secret, 'scopes': creds.scopes}
     
-    # ドライブから既存の暗号化プロフィールを探す
+    # Driveから暗号化プロフィール（profile_enc.dat）を検索して復元
     try:
         service = build('drive', 'v3', credentials=creds)
-        q = "name = 'profile_enc.dat' and trashed = false"
-        files = service.files().list(q=q, fields='files(id)').execute().get('files', [])
+        files = service.files().list(q="name = 'profile_enc.dat' and trashed = false").execute().get('files', [])
         if files:
             content = service.files().get_media(fileId=files[0]['id']).execute().decode()
             u = decrypt_data(content)
@@ -67,7 +64,6 @@ def callback():
                 session['user_info'] = u
                 return redirect(url_for('mypage'))
     except: pass
-    
     return redirect(url_for('profile_edit'))
 
 @app.route('/profile_edit', methods=['GET', 'POST'])
@@ -77,25 +73,28 @@ def profile_edit():
         u = {
             "name": request.form.get('name'),
             "gender": request.form.get('gender'),
-            "birth": f"{request.form.get('birth_y')}-{request.form.get('birth_m')}-{request.form.get('birth_d')}",
+            "birth": f"{request.form.get('birth_y')}-{request.form.get('birth_m').zfill(2)}-{request.form.get('birth_d').zfill(2)}",
             "zip": request.form.get('zip')
         }
         session['user_info'] = u
-        # ドライブに暗号化して保存
+        # Driveへ保存（既存上書きまたは新規作成）
         try:
             creds = Credentials(**session['credentials'])
             service = build('drive', 'v3', credentials=creds)
-            enc_val = encrypt_data(u)
-            media = MediaInMemoryUpload(enc_val.encode(), mimetype='text/plain')
-            q = "name = 'profile_enc.dat' and trashed = false"
-            files = service.files().list(q=q).execute().get('files', [])
+            media = MediaInMemoryUpload(encrypt_data(u).encode(), mimetype='text/plain')
+            files = service.files().list(q="name = 'profile_enc.dat' and trashed = false").execute().get('files', [])
             if files: service.files().update(fileId=files[0]['id'], media_body=media).execute()
             else: service.files().create(body={'name': 'profile_enc.dat'}, media_body=media).execute()
         except: pass
         return redirect(url_for('mypage'))
 
     u = session.get('user_info', {})
-    y_opts = "".join([f'<option value="{y}" {"selected" if str(y) in u.get("birth","1955") else ""}>{y}</option>' for y in range(1930, 2011)])
+    # 指示通りのデフォルト値設定 (1955-01-01)
+    b = u.get('birth', '1955-01-01').split('-')
+    y_opts = "".join([f'<option value="{y}" {"selected" if str(y)==b[0] else ""}>{y}</option>' for y in range(1930, 2011)])
+    m_opts = "".join([f'<option value="{m}" {"selected" if str(m).zfill(2)==b[1] else ""}>{m}</option>' for m in range(1, 13)])
+    d_opts = "".join([f'<option value="{d}" {"selected" if str(d).zfill(2)==b[2] else ""}>{d}</option>' for d in range(1, 32)])
+
     return f'''
     <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
     body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}
@@ -106,11 +105,9 @@ def profile_edit():
     <form method="post">
         名前: <input type="text" name="name" value="{u.get('name','')}" required>
         性別: <select name="gender"><option value="1" {"selected" if u.get('gender')=='1' else ""}>男性</option><option value="2" {"selected" if u.get('gender')=='2' else ""}>女性</option></select>
-        生年(西暦): <select name="birth_y">{y_opts}</select>
-        月: <input type="number" name="birth_m" value="1" min="1" max="12" style="width:70px;"> 
-        日: <input type="number" name="birth_d" value="1" min="1" max="31" style="width:70px;">
+        生年月日: <div style="display:flex; gap:5px;"><select name="birth_y">{y_opts}</select><select name="birth_m">{m_opts}</select><select name="birth_d">{d_opts}</select></div>
         郵便番号: <input type="text" name="zip" value="{u.get('zip','')}" placeholder="123-4567">
-        <button type="submit" class="btn">保存してマイページへ</button>
+        <button type="submit" class="btn">保存して次へ</button>
     </form></div></body></html>'''
 
 @app.route('/mypage')
@@ -133,12 +130,12 @@ def mypage():
     <a href="/logout" style="color:red; display:block; margin-top:20px;">ログアウト</a>
     </div></body></html>'''
 
+# --- 以下、measure, save, result, report, logout は以前の指示通り ---
 @app.route('/measure')
 def measure():
     if 'credentials' not in session: return redirect(url_for('top'))
-    u = session.get('user_info')
-    if not u: return redirect(url_for('profile_edit'))
-    return render_template('index.html', gender=u.get('gender', '1'))
+    if 'user_info' not in session: return redirect(url_for('profile_edit'))
+    return render_template('index.html', gender=session['user_info'].get('gender', '1'))
 
 @app.route('/save', methods=['POST'])
 def save():
@@ -147,14 +144,12 @@ def save():
         u = session.get('user_info', {})
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
-        
-        # フォルダ取得・作成
         q = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
         folders = service.files().list(q=q).execute().get('files', [])
         f_id = folders[0]['id'] if folders else service.files().create(body={'name': 'fraildata', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
         
-        # 測定データにプロフィールを統合してCSV化
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+        # CSVヘッダーにプロフィール情報を付与（当初の構想通り）
         headers = ["Date", "Name", "Gender", "Birth", "Zip"] + list(data.keys())
         values = [timestamp, u.get('name'), u.get('gender'), u.get('birth'), u.get('zip')] + list(data.values())
         
