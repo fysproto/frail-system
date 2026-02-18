@@ -18,8 +18,11 @@
         .a-text { font-size: 0.85rem; color: #007bff; display: block; margin-top: 4px; padding-left: 2px; }
         
         .eval-icon { width: 22px; height: 22px; border-radius: 50%; margin: auto; }
+        /* 4色定義を完全網羅 */
         .eval-red { background: #dc3545; box-shadow: 0 0 4px rgba(220,53,69,0.3); }
         .eval-blue { background: #007bff; box-shadow: 0 0 4px rgba(0,123,255,0.3); }
+        .eval-yellow { background: #ffc107; box-shadow: 0 0 4px rgba(255,193,7,0.3); }
+        .eval-white { background: #fff; border: 1px solid #ccc; }
 
         .btn-area { text-align: center; margin-top: 30px; }
         .btn-close { display: inline-block; padding: 12px 40px; background: #6c757d; color: white; text-decoration: none; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 1rem; }
@@ -54,7 +57,6 @@
     </div>
 
     <script>
-        // サーバー側(app.py)から最新の判定ロジック済みのデータを受け取る
         const answers = {{ answers|tojson }};
         const colors = {{ colors|tojson }};
         
@@ -83,9 +85,9 @@
         
         qData.forEach(q => {
             const color = colors[q.id] || 'white';
-            // app.py側で各設問ごとに定義された color に基づきドットの色を決定
-            // redかyellowなら赤ドット、それ以外（blue, white等）は青ドット
-            const iconClass = (color === 'red' || color === 'yellow') ? 'eval-red' : 'eval-blue';
+            
+            // color に応じてクラス名を決定 (eval-red, eval-blue, eval-yellow, eval-white)
+            const iconClass = 'eval-' + color;
             
             tbody.innerHTML += `
                 <tr>
