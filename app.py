@@ -220,3 +220,54 @@ def logout():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+# --- 過去履歴機能の追加ルーチン ---
+
+@app.route('/history_list')
+def history_list():
+    if 'credentials' not in session: return redirect(url_for('top'))
+    # ここは一覧ページのHTMLを返すだけ。実際のデータはJSで取得するわ。
+    return render_template('history.html')
+
+@app.route('/api/get_history')
+def api_get_history():
+    if 'credentials' not in session: return jsonify([])
+    page = int(request.args.get('page', 0))
+    creds = Credentials(**session['credentials'])
+    service = build('drive', 'v3', credentials=creds)
+    
+    # fraildataフォルダを探す
+    q_folder = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    folders = service.files().list(q=q_folder).execute().get('files', [])
+    if not folders: return jsonify([])
+    
+    # フォルダ内のCSVを日付順に取得
+    q_files = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
+    # 10件ずつ取得（pageSizeで制御）
+    results = service.files().list(
+        q=q_files, 
+        orderBy="createdTime desc", 
+        pageSize=10,
+        fields="nextPageToken, files(id, name, createdTime)"
+    ).execute()
+    
+    files = results.get('files', [])
+    # 高齢者・お医者さん向けに日付をフォーマット
+    history_data = []
+    for f in files:
+        dt = datetime.fromisoformat(f['createdTime'].replace('Z', '+00:00'))
+        history_data.append({
+            "id": f['id'],
+            "name": f['name'],
+            "display_date": dt.strftime('%Y年 %m月 %d日 (%a)')
+        })
+    return jsonify(history_data)
+
+@app.route('/history_view')
+def history_view():
+    if 'credentials' not in session: return redirect(url_for('top'))
+    target_id = request.args.get('id')
+    compare_id = request.args.get('compare_id') # 無ければ「前回」を自動取得するロジックを後で追加
+    
+    # ここでCSVを読み込み、新旧比較して「網掛けクラス」を決定する
+    # ※詳細は history_report.html 作成時に作り込むわね
+    return render_template('history_report.html', target_id=target_id, compare_id=compare_id)
