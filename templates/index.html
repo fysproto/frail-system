@@ -27,7 +27,8 @@
         .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-left: 8px; }
         .bg-blue { background: #007bff; } .bg-red { background: #dc3545; }
         .input-group { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 320px; }
-        .input-group input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 1.3rem; text-align: right; }
+        .input-group label { display: block; margin-top: 10px; font-size: 0.9rem; color: #333; }
+        .input-group input { width: 100%; padding: 12px; margin-bottom: 5px; border: 1px solid #ccc; border-radius: 8px; font-size: 1.3rem; text-align: right; }
     </style>
 </head>
 <body>
@@ -36,7 +37,9 @@
     <div id="main-stage"><div id="drop-zone">ここにシールをドラッグ</div><div id="options"></div><button id="next-btn" ontouchend="handleNext(event)" onclick="handleNext(event)">次へ</button></div>
 </div>
 <script>
+    // app.pyから渡される性別 (男性:"1", 女性:"2")
     const gender = "{{ gender|safe }}" || "1";
+    
     const questions = [
         { id: "finger", no: "計測", text: "指輪っかテスト", opts: ["囲めない", "ちょうど", "隙間ができる"], type: "logic", blue: ["囲めない", "ちょうど"], red: ["隙間ができる"] },
         { id: "q1", no: "1", text: "現在の健康状態はいかがですか？", opts: ["よい", "まあよい", "ふつう", "あまりよくない", "よくない"], type: "logic", blue: ["よい", "まあよい", "ふつう"], red: ["あまりよくない", "よくない"] },
@@ -97,37 +100,20 @@
         }
     }
 
-    // 確定時の「自動補正」ロジックの強化
     function formatToDecimal(el) {
         let v = el.value.replace(/[^-0-9.]/g, "");
         if (!v) return;
-        
-        // すでに小数点が打たれている場合はその数値を尊重
         let num = parseFloat(v);
-        
-        // 小数点が含まれていない整数入力の場合の補正
         if (!v.includes('.')) {
-            if (el.id === 'height') {
-                if (v.length >= 4) num = num / 10; // 1705 -> 170.5
-            } else {
-                if (v.length >= 3) num = num / 10; // 565 -> 56.5
-            }
+            if (el.id === 'height') { if (v.length >= 4) num = num / 10; }
+            else { if (v.length >= 3) num = num / 10; }
         }
-
-        // 範囲チェック（体重20kg以下ガード）
         let isValid = true;
-        let msg = "";
-        if (el.id === 'height') {
-            if (num < 50 || num > 250) { isValid = false; msg = "身長の値を確認してください"; }
-        } else if (el.id === 'weight') {
-            if (num < 20 || num > 200) { isValid = false; msg = "体重の値（20kg以上）を確認してください"; }
-        } else if (el.id === 'grip') {
-            if (num < 5 || num > 100) { isValid = false; msg = "握力の値を確認してください"; }
-        }
+        if (el.id === 'height') { if (num < 50 || num > 250) isValid = false; }
+        else if (el.id === 'weight') { if (num < 20 || num > 200) isValid = false; }
+        else if (el.id === 'grip') { if (num < 5 || num > 100) isValid = false; }
 
-        if (!isValid) {
-            alert(msg); el.value = ""; return false;
-        }
+        if (!isValid) { alert("入力値を確認してください"); el.value = ""; return false; }
 
         el.value = num.toFixed(1);
         if (el.id === 'grip') judgeGrip();
@@ -184,6 +170,8 @@
             
             btn.disabled = true; btn.innerText = "保存中...";
             allAnswers.grip = g.value; 
+            allAnswers.height = h.value;
+            allAnswers.weight = w.value;
             allAnswers.bmi = document.getElementById('bmi-val').innerText;
             
             try {
@@ -199,11 +187,9 @@
                     const iA = document.createElement('input'); iA.type='hidden'; iA.name='answers'; iA.value=JSON.stringify(allAnswers);
                     const iC = document.createElement('input'); iC.type='hidden'; iC.name='colors'; iC.value=JSON.stringify(colorResults);
                     form.append(iA, iC); document.body.appendChild(form); form.submit();
-                } else {
-                    throw new Error("Server error");
-                }
+                } else { throw new Error("Server error"); }
             } catch (e) { 
-                alert("保存に失敗しました。もう一度お試しください。"); 
+                alert("保存に失敗しました。"); 
                 btn.disabled = false; btn.innerText = "次へ"; 
             }
         } else { currentIdx++; render(); }
@@ -211,7 +197,9 @@
 
     function judgeGrip() {
         const val = parseFloat(document.getElementById('grip').value);
-        const threshold = (gender === "1") ? 28.1 : 18.1;
+        if (isNaN(val)) return;
+        // 性別判定: 男性(1)は28kg、女性(2)は18kgをしきい値とする
+        const threshold = (gender === "1") ? 28.0 : 18.0;
         const isRed = val < threshold;
         document.getElementById('dot-grip').className = "status-dot " + (isRed ? "bg-red" : "bg-blue");
         colorResults['grip'] = isRed ? "red" : "blue";
@@ -224,6 +212,7 @@
             const h_m = h_val / 100;
             const bmi = (w_val / (h_m * h_m)).toFixed(1);
             document.getElementById('bmi-val').innerText = bmi;
+            // 高齢者フレイル基準: BMI 21.5未満を注意(赤)とする
             const isRed = bmi < 21.5;
             document.getElementById('dot-bmi').className = "status-dot " + (isRed ? "bg-red" : "bg-blue");
             colorResults['bmi'] = isRed ? "red" : "blue";

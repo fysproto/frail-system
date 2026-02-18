@@ -22,7 +22,6 @@
         .eval-blue { background: #007bff; box-shadow: 0 0 4px rgba(0,123,255,0.3); }
 
         .btn-area { text-align: center; margin-top: 30px; }
-        /* 閉じるボタンのデザイン */
         .btn-close { display: inline-block; padding: 12px 40px; background: #6c757d; color: white; text-decoration: none; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 1rem; }
         
         @media print { .no-print { display: none; } }
@@ -34,7 +33,8 @@
             <h1 style="margin:0; font-size: 1.4rem; color: #007bff;">フレイル測定シート</h1>
             <div style="margin-top: 10px;">
                 <span class="info-label">測定日: {{ date }}</span>
-                <span class="info-label">利用者様</span>
+                {# ここをプロフィールから取得した名前に変更 #}
+                <span class="info-label">お名前: {{ user.name }} 様</span>
             </div>
         </div>
 
@@ -68,12 +68,12 @@
             { id: "q6", no: "6", text: "半年間で、2〜3kg以上の体重減少がありましたか？" },
             { id: "q7", no: "7", text: "以前に比べて、歩くのが遅くなったと感じますか？" },
             { id: "q8", no: "8", text: "この1年間に、転んだことがありますか？" },
-            { id: "q9", no: "9", text: "週に1回以上、外出していますか？" },
+            { id: "q9", no: "9", text: "週に1回以上、運動をしていますか？" },
             { id: "q10", no: "10", text: "周りの人から「もの忘れがある」と言われますか？" },
             { id: "q11", no: "11", text: "今日の日付がわからないことがありますか？" },
             { id: "q12", no: "12", text: "現在、タバコを吸う習慣がありますか？" },
-            { id: "q13", no: "13", text: "週に1回以上、友人と会ったり外出しますか？" },
-            { id: "q14", no: "14", text: "友人と話をすることがありますか？" },
+            { id: "q13", no: "13", text: "週に1回以上、外出していますか？" },
+            { id: "q14", no: "14", text: "家族や友人と話をすることがありますか？" },
             { id: "q15", no: "15", text: "困ったときに相談できる人がいますか？" },
             { id: "grip", no: "-", text: "握力" },
             { id: "bmi", no: "-", text: "BMI（体格指数）" }
@@ -83,6 +83,7 @@
         
         qData.forEach(q => {
             const color = colors[q.id] || 'white';
+            // redかyellowなら赤ドット、それ以外（blue, white等）は青ドット
             const iconClass = (color === 'red' || color === 'yellow') ? 'eval-red' : 'eval-blue';
             
             tbody.innerHTML += `
