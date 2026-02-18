@@ -3,7 +3,7 @@ import os
 import base64
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
@@ -24,7 +24,6 @@ CLIENT_CONFIG = {
 }
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-# --- セキュリティ：暗号化ロジック ---
 def encrypt_data(data_dict):
     return base64.b64encode(json.dumps(data_dict).encode()).decode()
 
@@ -32,25 +31,43 @@ def decrypt_data(enc_str):
     try: return json.loads(base64.b64decode(enc_str.encode()).decode())
     except: return None
 
-# --- 判定ロジック（Ver.4と同一基準・設問順） ---
+# --- 判定ロジック：提供された index.html の基準を完全移植 ---
 def judge_colors(answers, gender):
     c = {}
+    
+    # 1. 指輪っか: 「隙間ができる」なら赤
     f = answers.get('finger')
-    c['finger'] = 'blue' if f=='0' else ('red' if f=='2' else 'yellow')
+    c['finger'] = 'red' if f == '隙間ができる' else 'blue'
+    
+    # 2. BMI: 21.5未満なら赤
     try:
         bmi = float(answers.get('bmi', 0))
-        c['bmi'] = 'blue' if bmi >= 20 else 'red'
+        c['bmi'] = 'red' if bmi < 21.5 else 'blue'
     except: c['bmi'] = 'gray'
+    
+    # 3. 握力: 男28/女18未満なら赤
     try:
         g = float(answers.get('grip', 0))
-        if gender == '1': c['grip'] = 'blue' if g >= 28 else 'red'
-        else: c['grip'] = 'blue' if g >= 18 else 'red'
+        threshold = 28.0 if gender == '1' else 18.0
+        c['grip'] = 'red' if g < threshold else 'blue'
     except: c['grip'] = 'gray'
-    for i in range(1, 16):
-        qid = f'q{i}'
-        v = answers.get(qid)
-        if i in [1, 12]: c[qid] = 'blue' if v=='0' else 'yellow'
-        else: c[qid] = 'blue' if v=='0' else 'red'
+    
+    # 4. 質問票: 各設問ごとの red 定義を適用
+    red_defs = {
+        "q1": ["あまりよくない", "よくない"], "q2": ["やや不満", "不満"],
+        "q3": ["いいえ"], "q4": ["はい"], "q5": ["はい"], "q6": ["はい"],
+        "q7": ["はい"], "q8": ["はい"], "q9": ["いいえ"], "q10": ["はい"],
+        "q11": ["はい"], "q12": ["吸っている"], "q13": ["いいえ"],
+        "q14": ["いいえ"], "q15": ["いいえ"]
+    }
+    
+    for qid, red_list in red_defs.items():
+        val = answers.get(qid)
+        is_bad = val in red_list
+        if qid in ["q1", "q2", "q12"]:
+            c[qid] = 'yellow' if is_bad else 'white'
+        else:
+            c[qid] = 'red' if is_bad else 'blue'
     return c
 
 @app.route('/')
@@ -165,7 +182,6 @@ def report():
     if not data: return redirect(url_for('mypage'))
     return render_template('report.html', **data, user=user)
 
-# --- 過去履歴機能（堅牢化版） ---
 @app.route('/history_list')
 def history_list():
     if 'credentials' not in session: return redirect(url_for('top'))
@@ -175,7 +191,6 @@ def history_list():
 def api_get_history():
     if 'credentials' not in session: return jsonify([])
     try:
-        page = int(request.args.get('page', 0))
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
         q_f = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
@@ -186,17 +201,16 @@ def api_get_history():
         files = results.get('files', [])
         history_data = []
         days_map = ["月", "火", "水", "木", "金", "土", "日"]
+        JST = timezone(timedelta(hours=9))
         for f in files:
             raw_time = f.get('createdTime', '').replace('Z', '+00:00')
             if not raw_time: continue
-            dt = datetime.fromisoformat(raw_time)
-            day_jp = days_map[dt.weekday()]
-            display_date = dt.strftime(f'%Y年%m月%d日({day_jp}) %H:%M')
+            dt_jst = datetime.fromisoformat(raw_time).astimezone(JST)
+            day_jp = days_map[dt_jst.weekday()]
+            display_date = dt_jst.strftime(f'%Y年%m月%d日({day_jp}) %H:%M')
             history_data.append({"id": f['id'], "display_date": display_date})
         return jsonify(history_data)
-    except Exception as e:
-        print(f"History API Error: {e}")
-        return jsonify([])
+    except: return jsonify([])
 
 @app.route('/history_view')
 def history_view():
@@ -222,22 +236,11 @@ def history_view():
                 return d
             except: return None
         curr = get_data(tid)
-        if not curr: return "データの読み込みに失敗しました", 404
-        q_f = "name = 'fraildata' and trashed = false"
-        folders = service.files().list(q=q_f, fields="files(id)").execute().get('files', [])
-        prev = None
-        if folders:
-            q_csv = f"'{folders[0]['id']}' in parents and trashed = false"
-            all_f = service.files().list(q=q_csv, orderBy="createdTime desc", fields="files(id)").execute().get('files', [])
-            for i, f in enumerate(all_f):
-                if f['id'] == tid and i + 1 < len(all_f):
-                    prev = get_data(all_f[i+1]['id'])
-                    break
+        if not curr: return "読込失敗", 404
         user = session.get('user_info', {})
-        return render_template('history_report.html', curr=curr, prev=prev, user=user)
-    except Exception as e:
-        print(f"History View Error: {e}")
-        return redirect(url_for('history_list'))
+        # 前回比較用（任意）
+        return render_template('history_report.html', curr=curr, prev=None, user=user)
+    except: return redirect(url_for('history_list'))
 
 @app.route('/logout')
 def logout():
