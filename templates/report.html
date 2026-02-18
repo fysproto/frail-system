@@ -3,98 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>詳細レポート</title>
+    <title>フレイル測定シート</title>
     <style>
-        body { font-family: sans-serif; background: #f0f4f8; padding: 20px; color: #333; }
-        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 600px; margin: auto; }
-        h2 { text-align: center; color: #28a745; margin-bottom: 20px; }
-        .info-section { border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; font-size: 0.9rem; line-height: 1.6; }
-        .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .table th, .table td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
-        .table th { width: 40%; color: #666; font-size: 0.85rem; }
-        .table td { font-weight: bold; }
+        body { font-family: sans-serif; background: #fff; margin: 0; padding: 20px; color: #333; overflow-x: hidden; }
+        .container { max-width: 100%; margin: auto; }
+        .header { border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 15px; }
+        .info-label { display: inline-block; background: #f0f4f8; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; color: #555; margin: 0 10px 5px 0; }
         
-        /* 判定ラベルのスタイル */
-        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; color: white; margin-left: 10px; }
-        .bg-blue { background-color: #007bff; }
-        .bg-red { background-color: #dc3545; }
-        .bg-yellow { background-color: #ffc107; color: #333; }
-        .bg-white { background-color: #fff; border: 1px solid #ccc; color: #333; }
-        .bg-gray { background-color: #adb5bd; }
+        .list-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 15px; }
+        .list-table th, .list-table td { padding: 12px 5px; border-bottom: 1px solid #ddd; text-align: left; word-wrap: break-word; }
+        .list-table th { background: #eee; font-size: 0.8rem; }
+        
+        .q-text { font-size: 0.95rem; font-weight: bold; display: block; line-height: 1.4; color: #333; }
+        .a-text { font-size: 0.85rem; color: #007bff; display: block; margin-top: 4px; padding-left: 2px; }
+        
+        .eval-icon { width: 22px; height: 22px; border-radius: 50%; margin: auto; }
+        .eval-red { background: #dc3545; box-shadow: 0 0 4px rgba(220,53,69,0.3); }
+        .eval-blue { background: #007bff; box-shadow: 0 0 4px rgba(0,123,255,0.3); }
 
-        .btn-group { display: flex; gap: 10px; margin-top: 30px; }
-        .btn { flex: 1; text-align: center; padding: 15px; border-radius: 12px; text-decoration: none; font-weight: bold; }
-        .btn-main { background: #007bff; color: white; }
-        .btn-sub { background: #6c757d; color: white; }
-        @media print { .btn-group { display: none; } }
+        .btn-area { text-align: center; margin-top: 30px; }
+        .btn-close { display: inline-block; padding: 12px 40px; background: #6c757d; color: white; text-decoration: none; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        
+        @media print { .no-print { display: none; } }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>フレイル測定 詳細レポート</h2>
-        
-        <div class="info-section">
-            <p><strong>測定日時:</strong> {{ date }}</p>
-            <p><strong>お名前:</strong> {{ user.name }} 様</p>
-            <p><strong>身体状況:</strong> {{ '男性' if user.gender == '1' else '女性' }} / BMI: {{ answers.bmi }} / 握力: {{ answers.grip }}kg</p>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin:0; font-size: 1.4rem; color: #007bff;">フレイル測定シート</h1>
+            <div style="margin-top: 10px;">
+                <span class="info-label">測定日: {{ date }}</span>
+                <span class="info-label">お名前: {{ user.name }} 様</span>
+            </div>
         </div>
 
-        <table class="table">
+        <table class="list-table">
             <thead>
                 <tr>
-                    <th>項目</th>
-                    <th>回答</th>
-                    <th>判定</th>
+                    <th style="width: 35px;">No</th>
+                    <th>質問と回答</th>
+                    <th style="width: 55px; text-align: center;">状態</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr>
-                    <td>指輪っかテスト</td>
-                    <td>{{ answers.finger }}</td>
-                    <td><span class="status-badge bg-{{ colors.finger }}">{{ '注意' if colors.finger == 'red' else '良好' }}</span></td>
-                </tr>
-                <tr>
-                    <td>BMI（体格）</td>
-                    <td>{{ answers.bmi }}</td>
-                    <td><span class="status-badge bg-{{ colors.bmi }}">{{ '注意' if colors.bmi == 'red' else '良好' }}</span></td>
-                </tr>
-                <tr>
-                    <td>握力</td>
-                    <td>{{ answers.grip }}kg</td>
-                    <td><span class="status-badge bg-{{ colors.grip }}">{{ '注意' if colors.grip == 'red' else '良好' }}</span></td>
-                </tr>
-
-                {% set q_labels = {
-                    'q1': '健康状態', 'q2': '生活満足度', 'q3': '3食食べている', 'q4': '噛む力', 'q5': 'むせやすさ',
-                    'q6': '体重の変化', 'q7': '歩く速さ', 'q8': '転倒の経験', 'q9': '運動の習慣', 'q10': '物忘れ',
-                    'q11': '日付の認識', 'q12': 'たばこの習慣', 'q13': '外出の頻度', 'q14': '友人との交流', 'q15': '相談できる人'
-                } %}
-
-                {% for i in range(1, 16) %}
-                {% set qid = "q" ~ i %}
-                <tr>
-                    <td>Q{{ i }} {{ q_labels[qid] }}</td>
-                    <td>{{ answers[qid] }}</td>
-                    <td>
-                        {% if colors[qid] == 'red' %}
-                            <span class="status-badge bg-red">要確認</span>
-                        {% elif colors[qid] == 'yellow' %}
-                            <span class="status-badge bg-yellow">注意</span>
-                        {% elif colors[qid] == 'white' or colors[qid] == 'blue' %}
-                            <span class="status-badge bg-blue">良好</span>
-                        {% else %}
-                            <span class="status-badge bg-gray">-</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
+            <tbody id="sheet-body"></tbody>
         </table>
 
-        <div class="btn-group">
-            <a href="/mypage" class="btn btn-sub">マイページ</a>
-            <a href="javascript:window.print()" class="btn btn-main">レポートを印刷・保存</a>
+        <div class="btn-area no-print">
+            <button onclick="history.back()" class="btn-close">✕ 画面を閉じる</button>
         </div>
     </div>
+
+    <script>
+        // サーバー側(app.py)から最新の判定ロジック済みのデータを受け取る
+        const answers = {{ answers|tojson }};
+        const colors = {{ colors|tojson }};
+        
+        const qData = [
+            { id: "finger", no: "-", text: "指輪っかテスト" },
+            { id: "q1", no: "1", text: "現在の健康状態はいかがですか？" },
+            { id: "q2", no: "2", text: "毎日の生活に満足していますか？" },
+            { id: "q3", no: "3", text: "1日3食、規則正しく食べていますか？" },
+            { id: "q4", no: "4", text: "半年前に比べて、硬いものが食べにくくなりましたか？" },
+            { id: "q5", no: "5", text: "お茶や汁物で、むせることがありますか？" },
+            { id: "q6", no: "6", text: "半年間で、2〜3kg以上の体重減少がありましたか？" },
+            { id: "q7", no: "7", text: "以前に比べて、歩くのが遅くなったと感じますか？" },
+            { id: "q8", no: "8", text: "この1年間に、転んだことがありますか？" },
+            { id: "q9", no: "9", text: "週に1回以上、運動をしていますか？" },
+            { id: "q10", no: "10", text: "周りの人から「もの忘れがある」と言われますか？" },
+            { id: "q11", no: "11", text: "今日の日付がわからないことがありますか？" },
+            { id: "q12", no: "12", text: "現在、タバコを吸う習慣がありますか？" },
+            { id: "q13", no: "13", text: "週に1回以上、外出していますか？" },
+            { id: "q14", no: "14", text: "家族や友人と話をすることがありますか？" },
+            { id: "q15", no: "15", text: "困ったときに相談できる人がいますか？" },
+            { id: "grip", no: "-", text: "握力" },
+            { id: "bmi", no: "-", text: "BMI（体格指数）" }
+        ];
+
+        const tbody = document.getElementById('sheet-body');
+        
+        qData.forEach(q => {
+            const color = colors[q.id] || 'white';
+            // app.py側で各設問ごとに定義された color に基づきドットの色を決定
+            // redかyellowなら赤ドット、それ以外（blue, white等）は青ドット
+            const iconClass = (color === 'red' || color === 'yellow') ? 'eval-red' : 'eval-blue';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td style="color:#888; font-size:0.8rem; vertical-align:top; text-align:center;">${q.no}</td>
+                    <td>
+                        <span class="q-text">${q.text}</span>
+                        <span class="a-text">回答：${answers[q.id] || "-"}</span>
+                    </td>
+                    <td style="text-align:center;"><div class="eval-icon ${iconClass}"></div></td>
+                </tr>`;
+        });
+    </script>
 </body>
 </html>
