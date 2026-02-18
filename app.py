@@ -117,8 +117,10 @@ def result():
 def report():
     if 'credentials' not in session: return redirect(url_for('top'))
     data = session.get('report_data')
+    user = session.get('user_info', {}) # これを追加して名前データを取得
     if not data: return redirect(url_for('mypage'))
-    return render_template('report.html', **data)
+    # dataを展開しつつ、userオブジェクトも明示的に渡すわ
+    return render_template('report.html', **data, user=user)
 
 @app.route('/logout')
 def logout():
