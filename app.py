@@ -11,7 +11,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 
 app = Flask(__name__)
-app.secret_key = "frail_app_key_2026_v6"
+app.secret_key = "frail_app_key_2026_final"
 
 CLIENT_CONFIG = {
     "web": {
@@ -168,7 +168,6 @@ def report():
     data = session.get('report_data')
     if not data: return redirect(url_for('mypage'))
     user = session.get('user_info', {})
-    # 測定直後は prev_colors を None で送る
     return render_template('report.html', **data, user=user, prev_colors=None)
 
 @app.route('/history_list')
@@ -204,40 +203,34 @@ def history_view():
     try:
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
-
-        def parse_csv(file_id):
-            content = service.files().get_media(fileId=file_id).execute().decode('utf-8-sig')
-            r = csv.reader(io.StringIO(content))
-            d = {"answers": {}}
+        
+        def parse_csv(fid):
+            content = service.files().get_media(fileId=fid).execute().decode('utf-8-sig')
+            r = csv.reader(io.StringIO(content)); d = {"answers": {}}
             for row in r:
                 if len(row) < 2: continue
                 if row[0] == "Date": d["date"] = row[1]
                 elif row[0] == "Gender": d["gender"] = row[1]
                 else: d["answers"][row[0]] = row[1]
-            u_info = session.get('user_info', {})
-            d["colors"] = judge_colors(d["answers"], d.get("gender", u_info.get("gender", "1")))
+            u = session.get('user_info', {})
+            d["colors"] = judge_colors(d["answers"], d.get("gender", u.get("gender", "1")))
             return d
 
-        # 現在のデータ
         curr = parse_csv(tid)
-        
-        # --- 比較用の「一つ前」を自動取得 ---
         q_f = "name = 'fraildata' and trashed = false"
         folders = service.files().list(q=q_f).execute().get('files', [])
         prev_colors = None
         if folders:
             q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
-            # 作成日時順に並べて自分の次を探す
             res = service.files().list(q=q_csv, orderBy="createdTime desc", fields="files(id)").execute()
             files = res.get('files', [])
             for i, f in enumerate(files):
                 if f['id'] == tid and i + 1 < len(files):
                     prev_colors = parse_csv(files[i+1]['id'])['colors']
                     break
-
         user = session.get('user_info', {})
         return render_template('report.html', **curr, user=user, prev_colors=prev_colors)
-    except: return redirect(url_for('history_list'))
+    except: return "History Load Error", 500
 
 @app.route('/logout')
 def logout():
