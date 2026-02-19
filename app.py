@@ -13,6 +13,7 @@ from googleapiclient.http import MediaInMemoryUpload
 app = Flask(__name__)
 app.secret_key = "frail_app_key_2026_final"
 
+# クライアント設定
 CLIENT_CONFIG = {
     "web": {
         "client_id": "734131799600-cn8qec6q6dqh24v93bf4ubabb0gtjm5d.apps.googleusercontent.com",
@@ -31,6 +32,7 @@ def decrypt_data(enc_str):
     try: return json.loads(base64.b64decode(enc_str.encode()).decode())
     except: return None
 
+# 判定ロジック
 def judge_colors(answers, gender):
     c = {}
     f = answers.get('finger')
@@ -44,6 +46,7 @@ def judge_colors(answers, gender):
         threshold = 28.0 if gender == '1' else 18.0
         c['grip'] = 'red' if g < threshold else 'blue'
     except: c['grip'] = 'gray'
+    
     red_defs = {
         "q1": ["あまりよくない", "よくない"], "q2": ["やや不満", "不満"],
         "q3": ["いいえ"], "q4": ["はい"], "q5": ["はい"], "q6": ["はい"],
@@ -63,10 +66,7 @@ def judge_colors(answers, gender):
 @app.route('/')
 def top():
     if 'credentials' in session: return redirect(url_for('mypage'))
-    return '''<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;}
-    button{padding:25px 50px;font-size:1.6rem;cursor:pointer;background:#007bff;color:white;border:none;border-radius:15px;font-weight:bold;}</style></head>
-    <body><h1 style="margin-bottom:50px;">フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>'''
+    return '<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f0f4f8;}button{padding:25px 50px;font-size:1.6rem;cursor:pointer;background:#007bff;color:white;border:none;border-radius:15px;font-weight:bold;}</style></head><body><h1 style="margin-bottom:50px;">フレイル測定アプリ</h1><a href="/login"><button>Googleでログイン</button></a></body></html>'
 
 @app.route('/login')
 def login():
@@ -127,7 +127,6 @@ def mypage():
 
 @app.route('/measure')
 def measure():
-    if 'credentials' not in session: return redirect(url_for('top'))
     return '''<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}.card{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:500px; margin:auto; text-align:left; box-sizing:border-box;}.box{height:150px; overflow-y:scroll; border:1px solid #eee; padding:10px; margin:15px 0; font-size:0.85rem; color:#666;}.btn-start{display:block; width:100%; padding:18px; background:#28a745; color:white; text-align:center; text-decoration:none; border-radius:12px; font-weight:bold; box-sizing:border-box;}</style>
     </head><body><div class="card"><h2>測定前の同意</h2><p>測定結果はご自身のGoogleドライブに保存されます。内容を確認し同意して開始してください。</p><div class="box">【同意事項】<br>・収集したデータはフレイル判定のみに使用します。<br>・結果は個人の参考用です。<br>・データはご自身のGoogleドライブ「fraildata」フォルダに保存されます。</div><a href="/start_test" class="btn-start">同意して測定を開始する</a><p style="text-align:center;"><a href="/mypage" style="color:#666; font-size:0.8rem;">マイページへ戻る</a></p></div></body></html>'''
 
@@ -144,15 +143,22 @@ def save():
         u = session.get('user_info', {})
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
+        
+        # --- 時刻修正：JSTに固定 ---
         jst = timezone(timedelta(hours=9))
         now_jst = datetime.now(jst)
+
         q = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
         folders = service.files().list(q=q).execute().get('files', [])
         f_id = folders[0]['id'] if folders else service.files().create(body={'name': 'fraildata', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
+        
         csv_content = f"Date,{now_jst.strftime('%Y-%m-%d %H:%M')}\nName,{u.get('name')}\nGender,{u.get('gender')}\nBirth,{u.get('birth')}\nZip,{u.get('zip')}\n"
         for k, v in data.items(): csv_content += f"{k},{v}\n"
+        
         media = MediaInMemoryUpload(csv_content.encode('utf-8-sig'), mimetype='text/csv')
-        service.files().create(body={'name': f"測定_{u.get('name')}_{now_jst.strftime('%m%d_%H%M')}.csv", 'parents': [f_id]}, media_body=media).execute()
+        # ファイル名もJST時刻で作成
+        file_name = f"測定_{u.get('name')}_{now_jst.strftime('%m%d_%H%M')}.csv"
+        service.files().create(body={'name': file_name, 'parents': [f_id]}, media_body=media).execute()
         return jsonify({"status": "success"})
     except Exception as e: return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -161,6 +167,7 @@ def result():
     answers = json.loads(request.form.get('answers', '{}'))
     user = session.get('user_info', {})
     colors = judge_colors(answers, user.get('gender', '1'))
+    # 表示用の日付もJST
     jst = timezone(timedelta(hours=9))
     session['report_data'] = {'answers': answers, 'colors': colors, 'date': datetime.now(jst).strftime('%Y/%m/%d %H:%M')}
     return render_template('result.html', answers=answers, colors=colors, user=user)
@@ -169,9 +176,9 @@ def result():
 def report():
     if 'credentials' not in session: return redirect(url_for('top'))
     data = session.get('report_data')
-    user = session.get('user_info', {})
     if not data: return redirect(url_for('mypage'))
-    return render_template('report.html', **data, prev_colors=None, user=user)
+    user = session.get('user_info', {})
+    return render_template('report.html', **data, user=user)
 
 @app.route('/history_list')
 def history_list():
@@ -184,8 +191,8 @@ def api_get_history():
     try:
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
-        q_f = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
-        folders = service.files().list(q=q_f, fields="files(id)").execute().get('files', [])
+        q_f = "name = 'fraildata' and trashed = false"
+        folders = service.files().list(q=q_f).execute().get('files', [])
         if not folders: return jsonify([])
         q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
         results = service.files().list(q=q_csv, orderBy="createdTime desc", pageSize=20, fields="files(id, name, createdTime)").execute()
@@ -206,34 +213,17 @@ def history_view():
     try:
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
-        def parse_csv(content):
-            r = csv.reader(io.StringIO(content))
-            d = {"answers": {}}
-            for row in r:
-                if len(row) < 2: continue
-                if row[0] == "Date": d["date"] = row[1]
-                elif row[0] == "Gender": d["gender"] = row[1]
-                else: d["answers"][row[0]] = row[1]
-            u_info = session.get('user_info', {})
-            d["colors"] = judge_colors(d["answers"], d.get("gender", u_info.get("gender", "1")))
-            return d
-        curr_raw = service.files().get_media(fileId=tid).execute().decode('utf-8-sig')
-        curr = parse_csv(curr_raw)
-        q_f = "name = 'fraildata' and trashed = false"
-        folders = service.files().list(q=q_f).execute().get('files', [])
-        prev_colors = None
-        if folders:
-            q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
-            results = service.files().list(q=q_csv, orderBy="createdTime desc", fields="files(id)").execute()
-            files = results.get('files', [])
-            for i, f in enumerate(files):
-                if f['id'] == tid and i + 1 < len(files):
-                    p_id = files[i+1]['id']
-                    p_raw = service.files().get_media(fileId=p_id).execute().decode('utf-8-sig')
-                    prev_colors = parse_csv(p_raw).get('colors')
-                    break
-        user = session.get('user_info', {})
-        return render_template('report.html', **curr, prev_colors=prev_colors, user=user)
+        content = service.files().get_media(fileId=tid).execute().decode('utf-8-sig')
+        r = csv.reader(io.StringIO(content))
+        d = {"answers": {}}
+        for row in r:
+            if len(row) < 2: continue
+            if row[0] == "Date": d["date"] = row[1]
+            elif row[0] == "Gender": d["gender"] = row[1]
+            else: d["answers"][row[0]] = row[1]
+        u_info = session.get('user_info', {})
+        d["colors"] = judge_colors(d["answers"], d.get("gender", u_info.get("gender", "1")))
+        return render_template('report.html', **d, user=u_info)
     except: return redirect(url_for('history_list'))
 
 @app.route('/logout')
