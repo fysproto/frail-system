@@ -63,7 +63,7 @@
         </table>
 
         <div class="btn-area no-print">
-            <button onclick="history.back()" class="btn-close">✕ 画面を閉じる</button>
+            <button onclick="goBack()" class="btn-close">✕ 一覧へ戻る</button>
         </div>
     </div>
 
@@ -118,6 +118,11 @@
                     <td style="text-align:center;"><div class="eval-icon eval-${color}"></div></td>
                 </tr>`;
         });
+
+        // 戻るボタンの関数
+        function goBack() {
+            location.href = "/history_list";
+        }
     </script>
 </body>
 </html>
