@@ -11,9 +11,8 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 
 app = Flask(__name__)
-app.secret_key = "frail_app_key_2026_final"
+app.secret_key = "frail_app_key_2026_v6"
 
-# クライアント設定
 CLIENT_CONFIG = {
     "web": {
         "client_id": "734131799600-cn8qec6q6dqh24v93bf4ubabb0gtjm5d.apps.googleusercontent.com",
@@ -32,7 +31,6 @@ def decrypt_data(enc_str):
     try: return json.loads(base64.b64decode(enc_str.encode()).decode())
     except: return None
 
-# 判定ロジック
 def judge_colors(answers, gender):
     c = {}
     f = answers.get('finger')
@@ -143,22 +141,15 @@ def save():
         u = session.get('user_info', {})
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
-        
-        # --- 時刻修正：JSTに固定 ---
         jst = timezone(timedelta(hours=9))
         now_jst = datetime.now(jst)
-
         q = "name = 'fraildata' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
         folders = service.files().list(q=q).execute().get('files', [])
         f_id = folders[0]['id'] if folders else service.files().create(body={'name': 'fraildata', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
-        
         csv_content = f"Date,{now_jst.strftime('%Y-%m-%d %H:%M')}\nName,{u.get('name')}\nGender,{u.get('gender')}\nBirth,{u.get('birth')}\nZip,{u.get('zip')}\n"
         for k, v in data.items(): csv_content += f"{k},{v}\n"
-        
         media = MediaInMemoryUpload(csv_content.encode('utf-8-sig'), mimetype='text/csv')
-        # ファイル名もJST時刻で作成
-        file_name = f"測定_{u.get('name')}_{now_jst.strftime('%m%d_%H%M')}.csv"
-        service.files().create(body={'name': file_name, 'parents': [f_id]}, media_body=media).execute()
+        service.files().create(body={'name': f"測定_{u.get('name')}_{now_jst.strftime('%m%d_%H%M')}.csv", 'parents': [f_id]}, media_body=media).execute()
         return jsonify({"status": "success"})
     except Exception as e: return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -167,7 +158,6 @@ def result():
     answers = json.loads(request.form.get('answers', '{}'))
     user = session.get('user_info', {})
     colors = judge_colors(answers, user.get('gender', '1'))
-    # 表示用の日付もJST
     jst = timezone(timedelta(hours=9))
     session['report_data'] = {'answers': answers, 'colors': colors, 'date': datetime.now(jst).strftime('%Y/%m/%d %H:%M')}
     return render_template('result.html', answers=answers, colors=colors, user=user)
@@ -178,7 +168,8 @@ def report():
     data = session.get('report_data')
     if not data: return redirect(url_for('mypage'))
     user = session.get('user_info', {})
-    return render_template('report.html', **data, user=user)
+    # 測定直後は prev_colors を None で送る
+    return render_template('report.html', **data, user=user, prev_colors=None)
 
 @app.route('/history_list')
 def history_list():
@@ -213,17 +204,39 @@ def history_view():
     try:
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
-        content = service.files().get_media(fileId=tid).execute().decode('utf-8-sig')
-        r = csv.reader(io.StringIO(content))
-        d = {"answers": {}}
-        for row in r:
-            if len(row) < 2: continue
-            if row[0] == "Date": d["date"] = row[1]
-            elif row[0] == "Gender": d["gender"] = row[1]
-            else: d["answers"][row[0]] = row[1]
-        u_info = session.get('user_info', {})
-        d["colors"] = judge_colors(d["answers"], d.get("gender", u_info.get("gender", "1")))
-        return render_template('report.html', **d, user=u_info)
+
+        def parse_csv(file_id):
+            content = service.files().get_media(fileId=file_id).execute().decode('utf-8-sig')
+            r = csv.reader(io.StringIO(content))
+            d = {"answers": {}}
+            for row in r:
+                if len(row) < 2: continue
+                if row[0] == "Date": d["date"] = row[1]
+                elif row[0] == "Gender": d["gender"] = row[1]
+                else: d["answers"][row[0]] = row[1]
+            u_info = session.get('user_info', {})
+            d["colors"] = judge_colors(d["answers"], d.get("gender", u_info.get("gender", "1")))
+            return d
+
+        # 現在のデータ
+        curr = parse_csv(tid)
+        
+        # --- 比較用の「一つ前」を自動取得 ---
+        q_f = "name = 'fraildata' and trashed = false"
+        folders = service.files().list(q=q_f).execute().get('files', [])
+        prev_colors = None
+        if folders:
+            q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
+            # 作成日時順に並べて自分の次を探す
+            res = service.files().list(q=q_csv, orderBy="createdTime desc", fields="files(id)").execute()
+            files = res.get('files', [])
+            for i, f in enumerate(files):
+                if f['id'] == tid and i + 1 < len(files):
+                    prev_colors = parse_csv(files[i+1]['id'])['colors']
+                    break
+
+        user = session.get('user_info', {})
+        return render_template('report.html', **curr, user=user, prev_colors=prev_colors)
     except: return redirect(url_for('history_list'))
 
 @app.route('/logout')
