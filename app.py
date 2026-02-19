@@ -230,7 +230,7 @@ def history_view():
                     break
         user = session.get('user_info', {})
         return render_template('report.html', **curr, user=user, prev_colors=prev_colors)
-    except: return "History Load Error", 500
+    except: return "History View Error", 500
 
 @app.route('/logout')
 def logout():
