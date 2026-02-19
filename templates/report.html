@@ -7,10 +7,16 @@
     <style>
         body { font-family: sans-serif; background: #fff; margin: 0; padding: 20px; color: #333; overflow-x: hidden; }
         .container { max-width: 100%; margin: auto; }
-        .header { border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 15px; }
+        .header { border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 5px; }
         .info-label { display: inline-block; background: #f0f4f8; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; color: #555; margin: 0 10px 5px 0; }
         
-        .list-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 15px; }
+        /* 網掛けCSS：デザインを損なわない薄い色 */
+        .diff-bad { background-color: rgba(220, 53, 69, 0.08) !important; } 
+        .diff-good { background-color: rgba(0, 123, 255, 0.08) !important; }
+        .legend { font-size: 0.7rem; color: #777; text-align: right; margin-bottom: 5px; }
+        .legend-item { display: inline-block; margin-left: 10px; padding: 1px 6px; border-radius: 3px; }
+
+        .list-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 10px; }
         .list-table th, .list-table td { padding: 12px 5px; border-bottom: 1px solid #ddd; text-align: left; word-wrap: break-word; }
         .list-table th { background: #eee; font-size: 0.8rem; }
         
@@ -18,12 +24,9 @@
         .a-text { font-size: 0.85rem; color: #007bff; display: block; margin-top: 4px; padding-left: 2px; }
         
         .eval-icon { width: 22px; height: 22px; border-radius: 50%; margin: auto; }
-        
-        /* --- 判定カラーの完全定義 --- */
         .eval-red { background: #dc3545; box-shadow: 0 0 4px rgba(220,53,69,0.3); }
         .eval-blue { background: #007bff; box-shadow: 0 0 4px rgba(0,123,255,0.3); }
         .eval-yellow { background: #ffc107; box-shadow: 0 0 4px rgba(255,193,7,0.3); }
-        /* 白（良好）はグレーの枠を付けて「白」とわかるように */
         .eval-white { background: #fff; border: 1px solid #ccc; }
 
         .btn-area { text-align: center; margin-top: 30px; }
@@ -40,6 +43,14 @@
                 <span class="info-label">測定日: {{ date }}</span>
                 <span class="info-label">お名前: {{ user.name }} 様</span>
             </div>
+        </div>
+
+        <div class="legend no-print">
+            {% if prev_colors %}
+                <span>前回比較:</span>
+                <span class="legend-item diff-bad">前回より注意が必要</span>
+                <span class="legend-item diff-good">前回より改善</span>
+            {% endif %}
         </div>
 
         <table class="list-table">
@@ -59,9 +70,9 @@
     </div>
 
     <script>
-        // Python(app.py)側から渡されるデータをJSに変換
         const answers = {{ answers|tojson }};
         const colors = {{ colors|tojson }};
+        const prevColors = {{ prev_colors|tojson or '{}' }};
         
         const qData = [
             { id: "finger", no: "-", text: "指輪っかテスト" },
@@ -88,13 +99,22 @@
         
         qData.forEach(q => {
             const color = colors[q.id] || 'white';
+            const prevColor = prevColors[q.id] || null;
             
-            // 修正の肝：app.pyが返すすべての色（red, blue, yellow, white）を
-            // CSSクラス（eval-red, eval-blue, eval-yellow, eval-white）に直結させる
+            let diffClass = '';
+            if (prevColor) {
+                // 赤/黄 を「悪い」、青/白 を「良い」として判定
+                const isPrevBad = (prevColor === 'red' || prevColor === 'yellow');
+                const isCurrBad = (color === 'red' || color === 'yellow');
+                
+                if (!isPrevBad && isCurrBad) diffClass = 'diff-bad';
+                else if (isPrevBad && !isCurrBad) diffClass = 'diff-good';
+            }
+
             const iconClass = 'eval-' + color;
             
             tbody.innerHTML += `
-                <tr>
+                <tr class="${diffClass}">
                     <td style="color:#888; font-size:0.8rem; vertical-align:top; text-align:center;">${q.no}</td>
                     <td>
                         <span class="q-text">${q.text}</span>
