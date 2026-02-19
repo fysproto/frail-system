@@ -1,62 +1,43 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>過去の履歴</title>
+    <title>履歴一覧</title>
     <style>
-        body { font-family: sans-serif; background: #f0f4f8; margin: 0; padding: 20px 20px 100px 20px; }
-        h2 { text-align: center; color: #007bff; }
-        .history-item { 
-            background: white; padding: 20px; border-radius: 15px; margin-bottom: 12px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; 
-            justify-content: space-between; align-items: center; cursor: pointer;
-        }
-        .date-text { font-size: 1.1rem; font-weight: bold; }
-        .btn-more { 
-            display: block; width: 100%; padding: 25px; background: #007bff; color: white; 
-            border: none; border-radius: 15px; font-size: 1.4rem; font-weight: bold; 
-            margin: 30px 0; cursor: pointer;
-        }
-        #loader {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.8); z-index: 10000;
-            flex-direction: column; justify-content: center; align-items: center;
-        }
-        .spinner { width: 50px; height: 50px; border: 5px solid #ddd; border-top: 5px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(240, 244, 248, 0.9); padding: 15px 0; text-align: center; backdrop-filter: blur(5px); }
-        .btn-back { display: inline-block; padding: 12px 60px; background: #6c757d; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; }
+        body { padding: 20px; font-family: sans-serif; background: #f0f4f8; text-align: center; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 500px; margin: auto; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
+        .btn-view { padding: 8px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 0.9rem; font-weight: bold; }
+        .btn-view:active { opacity: 0.7; }
     </style>
 </head>
 <body>
-    <div id="loader"><div class="spinner"></div><p>読み込み中...</p></div>
-    <h2>過去の測定履歴</h2>
-    <div id="history-container"></div>
-    <button id="load-more" class="btn-more" style="display:none;" onclick="loadHistory()">以前の履歴をもっと見る</button>
-    <div class="bottom-nav"><a href="/mypage" class="btn-back">マイページへ戻る</a></div>
+    <div class="card">
+        <h3>過去の測定履歴</h3>
+        <div id="list">読み込み中...</div>
+        <br>
+        <a href="/mypage" style="color: #666; text-decoration: none; font-size: 0.9rem;">← マイページへ戻る</a>
+    </div>
 
     <script>
-        let page = 0;
-        function showLoader() { document.getElementById('loader').style.display = 'flex'; }
-        async function loadHistory() {
-            const btn = document.getElementById('load-more');
-            btn.disabled = true;
-            try {
-                const res = await fetch(`/api/get_history?page=${page}`);
-                const data = await res.json();
-                const container = document.getElementById('history-container');
-                data.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'history-item';
-                    div.onclick = () => { showLoader(); window.location.href=`/history_view?id=${item.id}`; };
-                    div.innerHTML = `<span class="date-text">${item.display_date}</span><span>＞</span>`;
-                    container.appendChild(div);
-                });
-                if (data.length === 10) { btn.style.display="block"; page++; } else { btn.style.display="none"; }
-            } finally { btn.disabled = false; }
-        }
-        loadHistory();
+        fetch('/api/get_history')
+            .then(response => response.json())
+            .then(data => {
+                const list = document.getElementById('list');
+                if (data.length === 0) {
+                    list.innerText = "履歴はありません";
+                    return;
+                }
+                list.innerHTML = data.map(item => `
+                    <div class="item">
+                        <span style="font-size:0.9rem; color:#333;">${item.display_date}</span>
+                        <a href="/history_view?id=${item.id}" class="btn-view" target="_blank">表示</a>
+                    </div>
+                `).join('');
+            })
+            .catch(err => {
+                document.getElementById('list').innerText = "読み込みに失敗しました";
+            });
     </script>
 </body>
 </html>

@@ -10,6 +10,7 @@
         .header { border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 10px; }
         .info-label { display: inline-block; background: #f0f4f8; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; color: #555; margin-right: 10px; }
         
+        /* 網掛けCSS */
         .diff-bad { background-color: rgba(220, 53, 69, 0.08) !important; } 
         .diff-good { background-color: rgba(0, 123, 255, 0.08) !important; }
         .legend { font-size: 0.75rem; color: #777; text-align: right; margin-bottom: 10px; }
@@ -62,7 +63,7 @@
         </table>
 
         <div class="btn-area no-print">
-            <button onclick="goBack()" class="btn-close">✕ 画面を閉じる</button>
+            <button onclick="window.close()" class="btn-close">✕ 画面を閉じる</button>
         </div>
     </div>
 
@@ -117,19 +118,6 @@
                     <td style="text-align:center;"><div class="eval-icon eval-${color}"></div></td>
                 </tr>`;
         });
-
-        // --- 修正：戻り先判別ロジック ---
-        function goBack() {
-            // 前回の判定結果（prevColors）がある場合は、履歴から来たと判断
-            if (prevColors !== null) {
-                location.href = "/history_list";
-            } else {
-                // 網掛け比較がない場合は、測定直後の画面と判断して「戻る」
-                // location.href = "/result" だとPOSTデータが消えるため、
-                // 安全にブラウザのバックボタンと同じ挙動をさせる
-                window.history.back();
-            }
-        }
     </script>
 </body>
 </html>
