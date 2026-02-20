@@ -59,19 +59,21 @@
         </div>
     </div>
     <script>
-        // 修正：URLパラメータを直接見て戻り先を決めるロジック
         function smartExit() {
+            // 事実確認用デバッグ
+            const params = new URLSearchParams(window.location.search);
+            const from = params.get('from');
+            alert('URL: ' + window.location.href + '\nfrom: ' + from);
+
             window.close();
+            
             setTimeout(() => {
-                const params = new URLSearchParams(window.location.search);
-                const from = params.get('from');
-                
                 if (from === 'history') {
                     location.href = '/history_list';
                 } else if (from === 'result') {
-                    history.back(); // 測定直後の場合は結果画面に戻る
+                    history.back();
                 } else {
-                    location.href = '/mypage'; // 判定不能な場合は安全策でマイページへ
+                    location.href = '/mypage';
                 }
             }, 300);
         }
