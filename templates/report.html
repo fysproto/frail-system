@@ -60,11 +60,21 @@
     </div>
     <script>
         function smartExit() {
+            // 1. タブを閉じようとする
             window.close();
+            
+            // 2. 閉じなかった場合の保険遷移
             setTimeout(() => {
                 const params = new URLSearchParams(window.location.search);
                 const from = params.get('from');
-                location.href = from === 'history' ? '/history_list' : '/mypage';
+                if (from === 'history') {
+                    location.href = '/history_list';
+                } else if (from === 'result') {
+                    // 測定直後は history.back() で結果画面に戻る
+                    history.back();
+                } else {
+                    location.href = '/mypage';
+                }
             }, 300);
         }
 
