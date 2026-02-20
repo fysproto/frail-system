@@ -203,36 +203,33 @@ def history_view():
     try:
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
-        
         def parse_csv(fid):
             content = service.files().get_media(fileId=fid).execute().decode('utf-8-sig')
             r = csv.reader(io.StringIO(content))
             d = {"answers": {}}
-            gender_val = "1"
+            gv = "1"
             for row in r:
                 if len(row) < 2: continue
                 if row[0] == "Date": d["date"] = row[1]
-                elif row[0] == "Gender": gender_val = row[1]
+                elif row[0] == "Gender": gv = row[1]
                 elif row[0] not in ["Name", "Birth", "Zip"]: d["answers"][row[0]] = row[1]
-            d["colors"] = judge_colors(d["answers"], gender_val)
+            d["colors"] = judge_colors(d["answers"], gv)
             return d
-
         curr = parse_csv(tid)
         q_f = "name = 'fraildata' and trashed = false"
         folders = service.files().list(q=q_f).execute().get('files', [])
-        prev_colors = None
+        pc = None
         if folders:
             q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
             res = service.files().list(q=q_csv, orderBy="createdTime desc", fields="files(id)").execute()
             files = res.get('files', [])
             for i, f in enumerate(files):
                 if f['id'] == tid and i + 1 < len(files):
-                    prev_colors = parse_csv(files[i+1]['id'])['colors']
+                    pc = parse_csv(files[i+1]['id'])['colors']
                     break
         user = session.get('user_info', {})
-        return render_template('report.html', **curr, user=user, prev_colors=prev_colors)
-    except:
-        return redirect(url_for('history_list'))
+        return render_template('report.html', **curr, user=user, prev_colors=pc)
+    except: return redirect(url_for('history_list'))
 
 @app.route('/logout')
 def logout():
