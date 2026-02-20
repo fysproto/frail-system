@@ -29,6 +29,10 @@
             .then(data => {
                 allData = data;
                 renderList();
+            })
+            .catch(err => {
+                document.getElementById('list').innerText = "エラーが発生しました";
+                console.error(err);
             });
 
         function renderList() {
@@ -36,7 +40,10 @@
             const btn = document.getElementById('more-btn');
             const target = allData.slice(0, displayCount);
             
-            if (allData.length === 0) { list.innerText = "履歴はありません"; return; }
+            if (allData.length === 0) {
+                list.innerText = "履歴はありません";
+                return;
+            }
             
             list.innerHTML = target.map(item => `
                 <div class="item">
