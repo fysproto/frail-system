@@ -55,10 +55,27 @@
             <tbody id="sheet-body"></tbody>
         </table>
         <div class="btn-area no-print">
-            <button type="button" onclick="window.close()" class="btn-close">✕ 画面を閉じる</button>
+            <button type="button" onclick="smartExit()" class="btn-close">✕ 画面を閉じる</button>
         </div>
     </div>
     <script>
+        // 修正箇所：確実に元の画面へ戻るための関数
+        function smartExit() {
+            // 1. まずタブを閉じようとする
+            window.close();
+            
+            // 2. 0.3秒待っても閉じない（この画面が残っている）場合は遷移する
+            setTimeout(() => {
+                const ref = document.referrer;
+                if (ref.includes('history_list')) {
+                    location.href = '/history_list';
+                } else {
+                    // 測定直後（result経由）や判定不能な場合はマイページへ
+                    location.href = '/mypage';
+                }
+            }, 300);
+        }
+
         {% raw %}
         const answers = {% endraw %}{{ answers|tojson }}{% raw %};
         const colors = {% endraw %}{{ colors|tojson }}{% raw %};
