@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フレイル測定シート</title>
+    <style>
+        body { font-family: sans-serif; background: #fff; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 100%; margin: auto; }
+        .header { border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 10px; }
+        .info-label { display: inline-block; background: #f0f4f8; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; color: #555; margin-right: 10px; }
+        .diff-bad { background-color: rgba(220, 53, 69, 0.08) !important; } 
+        .diff-good { background-color: rgba(0, 123, 255, 0.08) !important; }
+        .legend { font-size: 0.75rem; color: #777; text-align: right; margin-bottom: 10px; }
+        .legend-item { display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; }
+        .list-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .list-table th, .list-table td { padding: 12px 5px; border-bottom: 1px solid #ddd; text-align: left; }
+        .list-table th { background: #eee; font-size: 0.8rem; }
+        .q-text { font-size: 0.95rem; font-weight: bold; display: block; line-height: 1.4; }
+        .a-text { font-size: 0.85rem; color: #007bff; display: block; margin-top: 4px; }
+        .eval-icon { width: 22px; height: 22px; border-radius: 50%; margin: auto; }
+        .eval-red { background: #dc3545; }
+        .eval-blue { background: #007bff; }
+        .eval-yellow { background: #ffc107; }
+        .eval-white { background: #fff; border: 1px solid #ccc; }
+        .btn-area { text-align: center; margin-top: 30px; }
+        .btn-close { display: inline-block; padding: 12px 40px; background: #6c757d; color: white; border-radius: 30px; font-weight: bold; font-size: 1rem; cursor: pointer; border:none; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin:0; font-size: 1.4rem; color: #007bff;">フレイル測定シート</h1>
+            <div style="margin-top: 10px;">
+                <span class="info-label">測定日: {{ date }}</span>
+                <span class="info-label">お名前: {{ user.name }} 様</span>
+            </div>
+        </div>
+        {% if prev_colors %}
+        <div class="legend no-print">
+            <span>前回比較:</span>
+            <span class="legend-item diff-bad">前回より注意が必要</span>
+            <span class="legend-item diff-good">前回より改善</span>
+        </div>
+        {% endif %}
+        <table class="list-table">
+            <thead>
+                <tr>
+                    <th style="width: 35px;">No</th>
+                    <th>質問と回答</th>
+                    <th style="width: 55px; text-align: center;">状態</th>
+                </tr>
+            </thead>
+            <tbody id="sheet-body"></tbody>
+        </table>
+        <div class="btn-area no-print">
+            <button type="button" onclick="smartExit()" class="btn-close">✕ 画面を閉じる</button>
+        </div>
+    </div>
+    <script>
+        function smartExit() {
+            // 1. まずタブを閉じる試行
+            window.close();
+            
+            // 2. 0.3秒経っても閉じなかった場合の遷移
+            setTimeout(() => {
+                const params = new URLSearchParams(window.location.search);
+                const from = params.get('from');
+                
+                if (from === 'history') {
+                    location.href = '/history_list';
+                } else if (from === 'result') {
+                    // 測定直後なら、前の画面（おはじき結果画面）に戻る
+                    history.back();
+                } else {
+                    // 出自不明の場合は安全にマイページへ
+                    location.href = '/mypage';
+                }
+            }, 300);
+        }
+
+        {% raw %}
+        const answers = {% endraw %}{{ answers|tojson }}{% raw %};
+        const colors = {% endraw %}{{ colors|tojson }}{% raw %};
+        const prevColors = {% endraw %}{{ prev_colors|tojson or 'null' }}{% raw %};
+        const qData = [
+            { id: "finger", no: "-", text: "指輪っかテスト" },
+            { id: "q1", no: "1", text: "現在の健康状態はいかがですか？" },
+            { id: "q2", no: "2", text: "毎日の生活に満足していますか？" },
+            { id: "q3", no: "3", text: "1日3食、規則正しく食べていますか？" },
+            { id: "q4", no: "4", text: "半年前に比べて、硬いものが食べにくくなりましたか？" },
+            { id: "q5", no: "5", text: "お茶や汁物で、むせることがありますか？" },
+            { id: "q6", no: "6", text: "半年間で、2〜3kg以上の体重減少がありましたか？" },
+            { id: "q7", no: "7", text: "以前に比べて、歩くのが遅くなったと感じますか？" },
+            { id: "q8", no: "8", text: "この1年間に、転んだことがありますか？" },
+            { id: "q9", no: "9", text: "週に1回以上、運動をしていますか？" },
+            { id: "q10", no: "10", text: "周りの人から「もの忘れがある」と言われますか？" },
+            { id: "q11", no: "11", text: "今日の日付がわからないことがありますか？" },
+            { id: "q12", no: "12", text: "現在、タバコを吸う習慣がありますか？" },
+            { id: "q13", no: "13", text: "週に1回以上、外出していますか？" },
+            { id: "q14", no: "14", text: "家族や友人と話をすることがありますか？" },
+            { id: "q15", no: "15", text: "困ったときに相談できる人がいますか？" },
+            { id: "grip", no: "-", text: "握力" },
+            { id: "bmi", no: "-", text: "BMI（体格指数）" }
+        ];
+        const tbody = document.getElementById('sheet-body');
+        qData.forEach(q => {
+            const color = colors[q.id] || 'white';
+            const prevColor = prevColors ? prevColors[q.id] : null;
+            let diffClass = '';
+            if (prevColor) {
+                const isPrevBad = (prevColor === 'red' || prevColor === 'yellow');
+                const isCurrBad = (color === 'red' || color === 'yellow');
+                if (!isPrevBad && isCurrBad) diffClass = 'diff-bad';
+                else if (isPrevBad && !isCurrBad) diffClass = 'diff-good';
+            }
+            tbody.innerHTML += `<tr class="${diffClass}"><td style="color:#888; font-size:0.8rem; vertical-align:top; text-align:center;">${q.no}</td><td><span class="q-text">${q.text}</span><span class="a-text">回答：${answers[q.id] || "-"}</span></td><td style="text-align:center;"><div class="eval-icon eval-${color}"></div></td></tr>`;
+        });
+        {% endraw %}
+    </script>
+</body>
+</html>

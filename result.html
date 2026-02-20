@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>測定結果</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f4f8; margin: 0; padding: 20px; text-align: center; color: #333; }
+        .ohajiki-area { background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .ohajiki-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin: 20px 0; min-height: 50px; }
+        .ohajiki { width: 45px; height: 45px; border-radius: 50%; box-shadow: inset -5px -5px 10px rgba(0,0,0,0.2), 3px 5px 10px rgba(0,0,0,0.1); position: relative; }
+        .ohajiki::after { content: ''; position: absolute; top: 15%; left: 15%; width: 30%; height: 30%; background: rgba(255,255,255,0.4); border-radius: 50%; }
+        .red { background: radial-gradient(circle at 30% 30%, #ff5f6d, #dc3545); }
+        .blue { background: radial-gradient(circle at 30% 30%, #5fafff, #007bff); }
+        .yellow { background: radial-gradient(circle at 30% 30%, #fff05f, #ffc107); }
+        .white { background: #fff; border: 1px solid #ccc; box-shadow: none; }
+        .white::after { display: none; }
+        .category-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .category-title { font-weight: bold; border-left: 5px solid #28a745; padding-left: 10px; margin-bottom: 10px; color: #28a745; }
+        .item-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
+        .dot.red { background: #dc3545; } .dot.blue { background: #007bff; } .dot.yellow { background: #ffc107; } .dot.white { background: #fff; border: 1px solid #ccc; } .dot.gray { background: #adb5bd; }
+        .btn-report { display: block; width: 100%; max-width: 320px; margin: 20px auto; padding: 16px; background: #6c757d; color: white; text-decoration: none; border-radius: 15px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-home { display: inline-block; padding: 15px 40px; background: #007bff; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; margin-top: 10px; }
+        .description { font-size: 0.8rem; color: #666; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h2>お疲れ様でした！</h2>
+    <div class="ohajiki-area">
+        <p style="font-weight: bold; margin-bottom:5px;">あなたの「のびしろ」を確認しましょう</p>
+        <div class="ohajiki-container">
+            {% set item_list = ['finger','q1','q2','q3','q4','q5','q6','q7','q8','q9','q10','q11','q12','q13','q14','q15','grip','bmi'] %}
+            {% for id in item_list %}
+                <div class="ohajiki {{ colors.get(id, 'white') }}"></div>
+            {% endfor %}
+        </div>
+        <p class="description">※ {{ item_list|length }}項目すべての結果が表示されています</p>
+    </div>
+
+    <div class="category-card">
+        <div class="category-title">筋肉のちから（運動）</div>
+        <div class="item-row">指輪っかテスト <span class="dot {{ colors.get('finger','gray') }}"></span></div>
+        <div class="item-row">BMI（体格） <span class="dot {{ colors.get('bmi','gray') }}"></span></div>
+        <div class="item-row">握力 <span class="dot {{ colors.get('grip','gray') }}"></span></div>
+        <div class="item-row">Q7 歩く速さ <span class="dot {{ colors.get('q7','gray') }}"></span></div>
+        <div class="item-row">Q8 転倒の経験 <span class="dot {{ colors.get('q8','gray') }}"></span></div>
+        <div class="item-row">Q9 運動の習慣 <span class="dot {{ colors.get('q9','gray') }}"></span></div>
+    </div>
+
+    <div class="category-card">
+        <div class="category-title">お食事のようす（栄養）</div>
+        <div class="item-row">Q3 3食たべている <span class="dot {{ colors.get('q3','gray') }}"></span></div>
+        <div class="item-row">Q4 噛む力 <span class="dot {{ colors.get('q4','gray') }}"></span></div>
+        <div class="item-row">Q5 むせやすさ <span class="dot {{ colors.get('q5','gray') }}"></span></div>
+        <div class="item-row">Q6 体重の変化 <span class="dot {{ colors.get('q6','gray') }}"></span></div>
+    </div>
+
+    <div class="category-card">
+        <div class="category-title">つながり（社会参加）</div>
+        <div class="item-row">Q13 外出の頻度 <span class="dot {{ colors.get('q13','gray') }}"></span></div>
+        <div class="item-row">Q14 友人との交流 <span class="dot {{ colors.get('q14','gray') }}"></span></div>
+        <div class="item-row">Q15 相談できる人 <span class="dot {{ colors.get('q15','gray') }}"></span></div>
+    </div>
+
+    <div class="category-card">
+        <div class="category-title">生活のリズム</div>
+        <div class="item-row">Q10 物忘れがあると言われる <span class="dot {{ colors.get('q10','gray') }}"></span></div>
+        <div class="item-row">Q11 今日が何日か迷う <span class="dot {{ colors.get('q11','gray') }}"></span></div>
+    </div>
+
+    <div class="category-card">
+        <div class="category-title">保健師さんとの確認用</div>
+        <div class="item-row">Q1 健康状態 <span class="dot {{ colors.get('q1','gray') }}"></span></div>
+        <div class="item-row">Q2 生活の満足度 <span class="dot {{ colors.get('q2','gray') }}"></span></div>
+        <div class="item-row">Q12 たばこの習慣 <span class="dot {{ colors.get('q12','gray') }}"></span></div>
+    </div>
+
+    <a href="/report?from=result" class="btn-report" target="_blank">測定回答の詳細一覧を表示</a>
+    <a href="/mypage" class="btn-home">マイページへ戻る</a>
+</body>
+</html>
