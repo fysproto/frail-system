@@ -59,21 +59,19 @@
         </div>
     </div>
     <script>
+        // 修正：URLパラメータを直接見て戻り先を決めるロジック
         function smartExit() {
-            // 1. タブを閉じようとする
             window.close();
-            
-            // 2. 閉じなかった場合の保険遷移
             setTimeout(() => {
                 const params = new URLSearchParams(window.location.search);
                 const from = params.get('from');
+                
                 if (from === 'history') {
                     location.href = '/history_list';
                 } else if (from === 'result') {
-                    // 測定直後は history.back() で結果画面に戻る
-                    history.back();
+                    history.back(); // 測定直後の場合は結果画面に戻る
                 } else {
-                    location.href = '/mypage';
+                    location.href = '/mypage'; // 判定不能な場合は安全策でマイページへ
                 }
             }, 300);
         }
