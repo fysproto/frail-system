@@ -60,13 +60,13 @@
     </div>
     <script>
         function smartExit() {
-            // 事実確認用デバッグ
             const params = new URLSearchParams(window.location.search);
             const from = params.get('from');
-            alert('URL: ' + window.location.href + '\nfrom: ' + from);
-
+            
+            // 1. まずタブを閉じる
             window.close();
             
+            // 2. 0.3秒経ってもこの画面が残っている（閉じなかった）場合は遷移
             setTimeout(() => {
                 if (from === 'history') {
                     location.href = '/history_list';
