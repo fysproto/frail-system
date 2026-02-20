@@ -6,9 +6,9 @@
     <style>
         body { padding: 20px; font-family: sans-serif; background: #f0f4f8; text-align: center; }
         .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 500px; margin: auto; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
-        .btn-view { padding: 8px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 0.9rem; font-weight: bold; }
-        .btn-view:active { opacity: 0.7; }
+        .item { padding: 15px; border-bottom: 1px solid #eee; text-align: left; }
+        .item-link { color: #007bff; text-decoration: none; font-size: 1.1rem; font-weight: bold; display: block; }
+        .item-link:active { opacity: 0.6; }
     </style>
 </head>
 <body>
@@ -18,25 +18,17 @@
         <br>
         <a href="/mypage" style="color: #666; text-decoration: none; font-size: 0.9rem;">← マイページへ戻る</a>
     </div>
-
     <script>
         fetch('/api/get_history')
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 const list = document.getElementById('list');
-                if (data.length === 0) {
-                    list.innerText = "履歴はありません";
-                    return;
-                }
+                if (data.length === 0) { list.innerText = "履歴はありません"; return; }
                 list.innerHTML = data.map(item => `
                     <div class="item">
-                        <span style="font-size:0.9rem; color:#333;">${item.display_date}</span>
-                        <a href="/history_view?id=${item.id}" class="btn-view" target="_blank">表示</a>
+                        <a href="/history_view?id=${item.id}" class="item-link" target="_blank">${item.display_date}</a>
                     </div>
                 `).join('');
-            })
-            .catch(err => {
-                document.getElementById('list').innerText = "読み込みに失敗しました";
             });
     </script>
 </body>
