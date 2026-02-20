@@ -206,7 +206,8 @@ def history_view():
         
         def parse_csv(fid):
             content = service.files().get_media(fileId=fid).execute().decode('utf-8-sig')
-            r = csv.reader(io.StringIO(content)); d = {"answers": {}}
+            r = csv.reader(io.StringIO(content))
+            d = {"answers": {}}
             gender_val = "1"
             for row in r:
                 if len(row) < 2: continue
@@ -230,8 +231,7 @@ def history_view():
                     break
         user = session.get('user_info', {})
         return render_template('report.html', **curr, user=user, prev_colors=prev_colors)
-    except Exception as e:
-        print(f"Error: {e}")
+    except:
         return redirect(url_for('history_list'))
 
 @app.route('/logout')
