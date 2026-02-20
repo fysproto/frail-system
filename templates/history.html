@@ -40,7 +40,7 @@
             
             list.innerHTML = target.map(item => `
                 <div class="item">
-                    <a href="/history_view?id=${item.id}" class="item-link" target="_blank">${item.display_date}</a>
+                    <a href="/history_view?id=${item.id}&from=history" class="item-link" target="_blank">${item.display_date}</a>
                 </div>
             `).join('');
             
