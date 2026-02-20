@@ -37,9 +37,21 @@
                 <span class="info-label">お名前: {{ user.name }} 様</span>
             </div>
         </div>
-        {% if prev_colors %}<div class="legend no-print"><span>前回比較:</span><span class="legend-item diff-bad">前回より注意が必要</span><span class="legend-item diff-good">前回より改善</span></div>{% endif %}
+        {% if prev_colors %}
+        <div class="legend no-print">
+            <span>前回比較:</span>
+            <span class="legend-item diff-bad">前回より注意が必要</span>
+            <span class="legend-item diff-good">前回より改善</span>
+        </div>
+        {% endif %}
         <table class="list-table">
-            <thead><tr><th style="width: 35px;">No</th><th>質問と回答</th><th style="width: 55px; text-align: center;">状態</th></tr></thead>
+            <thead>
+                <tr>
+                    <th style="width: 35px;">No</th>
+                    <th>質問と回答</th>
+                    <th style="width: 55px; text-align: center;">状態</th>
+                </tr>
+            </thead>
             <tbody id="sheet-body"></tbody>
         </table>
         <div class="btn-area no-print">
@@ -47,25 +59,44 @@
         </div>
     </div>
     <script>
-        const answers = {{ answers|tojson }};
-        const colors = {{ colors|tojson }};
-        const prevColors = {{ prev_colors|tojson or 'null' }};
+        {% raw %}
+        const answers = {% endraw %}{{ answers|tojson }}{% raw %};
+        const colors = {% endraw %}{{ colors|tojson }}{% raw %};
+        const prevColors = {% endraw %}{{ prev_colors|tojson or 'null' }}{% raw %};
         const qData = [
             { id: "finger", no: "-", text: "指輪っかテスト" },
-            { id: "q1", no: "1", text: "現在の健康状態はいかがですか？" }, { id: "q2", no: "2", text: "毎日の生活に満足していますか？" }, { id: "q3", no: "3", text: "1日3食、規則正しく食べていますか？" }, { id: "q4", no: "4", text: "半年前に比べて、硬いものが食べにくくなりましたか？" }, { id: "q5", no: "5", text: "お茶や汁物で、むせることがありますか？" }, { id: "q6", no: "6", text: "半年間で、2〜3kg以上の体重減少がありましたか？" }, { id: "q7", no: "7", text: "以前に比べて、歩くのが遅くなったと感じますか？" }, { id: "q8", no: "8", text: "この1年間に、転んだことがありますか？" }, { id: "q9", no: "9", text: "週に1回以上、運動をしていますか？" }, { id: "q10", no: "10", text: "周りの人から「もの忘れがある」と言われますか？" }, { id: "q11", no: "11", text: "今日の日付がわからないことがありますか？" }, { id: "q12", no: "12", text: "現在、タバコを吸う習慣がありますか？" }, { id: "q13", no: "13", text: "週に1回以上、外出していますか？" }, { id: "q14", no: "14", text: "家族や友人と話をすることがありますか？" }, { id: "q15", no: "15", text: "困ったときに相談できる人がいますか？" }, { id: "grip", no: "-", text: "握力" }, { id: "bmi", no: "-", text: "BMI（体格指数）" }
+            { id: "q1", no: "1", text: "現在の健康状態はいかがですか？" },
+            { id: "q2", no: "2", text: "毎日の生活に満足していますか？" },
+            { id: "q3", no: "3", text: "1日3食、規則正しく食べていますか？" },
+            { id: "q4", no: "4", text: "半年前に比べて、硬いものが食べにくくなりましたか？" },
+            { id: "q5", no: "5", text: "お茶や汁物で、むせることがありますか？" },
+            { id: "q6", no: "6", text: "半年間で、2〜3kg以上の体重減少がありましたか？" },
+            { id: "q7", no: "7", text: "以前に比べて、歩くのが遅くなったと感じますか？" },
+            { id: "q8", no: "8", text: "この1年間に、転んだことがありますか？" },
+            { id: "q9", no: "9", text: "週に1回以上、運動をしていますか？" },
+            { id: "q10", no: "10", text: "周りの人から「もの忘れがある」と言われますか？" },
+            { id: "q11", no: "11", text: "今日の日付がわからないことがありますか？" },
+            { id: "q12", no: "12", text: "現在、タバコを吸う習慣がありますか？" },
+            { id: "q13", no: "13", text: "週に1回以上、外出していますか？" },
+            { id: "q14", no: "14", text: "家族や友人と話をすることがありますか？" },
+            { id: "q15", no: "15", text: "困ったときに相談できる人がいますか？" },
+            { id: "grip", no: "-", text: "握力" },
+            { id: "bmi", no: "-", text: "BMI（体格指数）" }
         ];
         const tbody = document.getElementById('sheet-body');
         qData.forEach(q => {
             const color = colors[q.id] || 'white';
-            const pc = prevColors ? prevColors[q.id] : null;
-            let dc = '';
-            if (pc) {
-                const isPb = (pc === 'red' || pc === 'yellow');
-                const isCb = (color === 'red' || color === 'yellow');
-                if (!isPb && isCb) dc = 'diff-bad'; else if (isPb && !isCb) dc = 'diff-good';
+            const prevColor = prevColors ? prevColors[q.id] : null;
+            let diffClass = '';
+            if (prevColor) {
+                const isPrevBad = (prevColor === 'red' || prevColor === 'yellow');
+                const isCurrBad = (color === 'red' || color === 'yellow');
+                if (!isPrevBad && isCurrBad) diffClass = 'diff-bad';
+                else if (isPrevBad && !isCurrBad) diffClass = 'diff-good';
             }
-            tbody.innerHTML += `<tr class="${dc}"><td style="color:#888; font-size:0.8rem; vertical-align:top; text-align:center;">${q.no}</td><td><span class="q-text">${q.text}</span><span class="a-text">回答：${answers[q.id] || "-"}</span></td><td style="text-align:center;"><div class="eval-icon eval-${color}"></div></td></tr>`;
+            tbody.innerHTML += `<tr class="${diffClass}"><td style="color:#888; font-size:0.8rem; vertical-align:top; text-align:center;">${q.no}</td><td><span class="q-text">${q.text}</span><span class="a-text">回答：${answers[q.id] || "-"}</span></td><td style="text-align:center;"><div class="eval-icon eval-${color}"></div></td></tr>`;
         });
+        {% endraw %}
     </script>
 </body>
 </html>

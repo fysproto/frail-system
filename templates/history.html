@@ -20,15 +20,21 @@
     </div>
     <script>
         fetch('/api/get_history')
-            .then(r => r.json())
+            .then(response => response.json())
             .then(data => {
                 const list = document.getElementById('list');
-                if (data.length === 0) { list.innerText = "履歴はありません"; return; }
+                if (data.length === 0) {
+                    list.innerText = "履歴はありません";
+                    return;
+                }
                 list.innerHTML = data.map(item => `
                     <div class="item">
                         <a href="/history_view?id=${item.id}" class="item-link" target="_blank">${item.display_date}</a>
                     </div>
                 `).join('');
+            })
+            .catch(err => {
+                document.getElementById('list').innerText = "読み込みに失敗しました";
             });
     </script>
 </body>
