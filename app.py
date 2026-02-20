@@ -203,6 +203,7 @@ def history_view():
     try:
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
+        
         def parse_csv(fid):
             content = service.files().get_media(fileId=fid).execute().decode('utf-8-sig')
             r = csv.reader(io.StringIO(content))
@@ -215,6 +216,7 @@ def history_view():
                 elif row[0] not in ["Name", "Birth", "Zip"]: d["answers"][row[0]] = row[1]
             d["colors"] = judge_colors(d["answers"], gender_val)
             return d
+
         curr = parse_csv(tid)
         q_f = "name = 'fraildata' and trashed = false"
         folders = service.files().list(q=q_f).execute().get('files', [])
@@ -229,7 +231,8 @@ def history_view():
                     break
         user = session.get('user_info', {})
         return render_template('report.html', answers=curr['answers'], colors=curr['colors'], date=curr['date'], user=user, prev_colors=prev_colors)
-    except: return redirect(url_for('history_list'))
+    except:
+        return redirect(url_for('history_list'))
 
 @app.route('/logout')
 def logout():
