@@ -112,7 +112,7 @@ def profile_edit():
     y_opts = "".join([f'<option value="{y}" {"selected" if str(y)==b[0] else ""}>{y}</option>' for y in range(1920, 2027)])
     m_opts = "".join([f'<option value="{m}" {"selected" if str(m).zfill(2)==b[1] else ""}>{m}</option>' for m in range(1, 13)])
     d_opts = "".join([f'<option value="{d}" {"selected" if str(d).zfill(2)==b[2] else ""}>{d}</option>' for d in range(1, 32)])
-    return f'''<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}.card{{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:400px; margin:auto; text-align:left;}}input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ccc; border-radius:8px; box-sizing:border-box; font-size:16px;}}.btn{{display:block; width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:12px; font-weight:bold; cursor:pointer; box-sizing:border-box;}}</style>
+    return f'''<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{{padding:20px; font-family:sans-serif; background:#f0f4f8; text-align:center;}}.card{{background:white; padding:30px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); max-width:400px; margin:auto; text-align:left;}}input, select{{width:100%; padding:12px; margin:10px 0; border:1px solid #ccc; border-radius:8px; box-sizing:border-box; font-size:16px;}}.btn{{display:block; width:100%; padding:15px; background:#28a745; color:white; border:none; border-radius:12px; font-weight:bold; cursor:pointer; box-sizing:border-box; font-size:1.1rem;}}</style>
     <script>function saveProfile(btn){{btn.disabled=true; btn.innerText="保存中..."; btn.form.submit();}}</script>
     </head><body><div class="card"><h2>プロフィール設定</h2><form method="post">名前: <input type="text" name="name" value="{u.get('name','')}" required>性別: <select name="gender"><option value="1" {"selected" if u.get('gender')=='1' else ""}>男性</option><option value="2" {"selected" if u.get('gender')=='2' else ""}>女性</option></select>生年月日: <div style="display:flex; gap:5px;"><select name="birth_y">{y_opts}</select><select name="birth_m">{m_opts}</select><select name="birth_d">{d_opts}</select></div>郵便番号: <input type="text" name="zip" value="{u.get('zip','')}" placeholder="123-4567"><button type="button" class="btn" onclick="saveProfile(this)">保存してマイページへ</button></form></div></body></html>'''
 
@@ -168,34 +168,7 @@ def report():
     data = session.get('report_data')
     if not data: return redirect(url_for('mypage'))
     user = session.get('user_info', {})
-
-    # 直前の測定（results[1]）と比較してグレー帯
-    prev_colors = None
-    try:
-        creds = Credentials(**session['credentials'])
-        service = build('drive', 'v3', credentials=creds)
-        q_f = "name = 'fraildata' and trashed = false"
-        folders = service.files().list(q=q_f).execute().get('files', [])
-        if folders:
-            q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
-            files = service.files().list(q=q_csv, orderBy="createdTime desc", fields="files(id)").execute().get('files', [])
-            if len(files) >= 2:
-                def parse_csv_local(fid):
-                    content = service.files().get_media(fileId=fid).execute().decode('utf-8-sig')
-                    r = csv.reader(io.StringIO(content))
-                    d = {"answers": {}}
-                    gender_val = "1"
-                    for row in r:
-                        if len(row) < 2: continue
-                        if row[0] == "Gender": gender_val = row[1]
-                        elif row[0] not in ["Name", "Birth", "Zip", "Date"]: d["answers"][row[0]] = row[1]
-                    d["colors"] = judge_colors(d["answers"], gender_val)
-                    return d
-                prev_colors = parse_csv_local(files[1]['id'])['colors']
-    except Exception as e:
-        print(f"Report Compare Error: {e}")
-
-    return render_template('report.html', answers=data['answers'], colors=data['colors'], date=data['date'], user=user, prev_colors=prev_colors, from_param="result")
+    return render_template('report.html', answers=data['answers'], colors=data['colors'], date=data['date'], user=user, prev_colors=None)
 
 @app.route('/history_list')
 def history_list():
@@ -208,22 +181,29 @@ def api_get_history():
     try:
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
+        
         q_f = "name = 'fraildata' and trashed = false"
         folders = service.files().list(q=q_f).execute().get('files', [])
         if not folders: return jsonify([])
+        
         q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
+        
+        # 修正：件数は制限せず、fieldsで各ファイルのデータサイズを極限まで削る
         results = service.files().list(
-            q=q_csv,
-            orderBy="createdTime desc",
+            q=q_csv, 
+            orderBy="createdTime desc", 
             fields="files(id, createdTime)"
         ).execute()
+        
         history_data = []
         days_map = ["月", "火", "水", "木", "金", "土", "日"]
         jst = timezone(timedelta(hours=9))
+        
         for f in results.get('files', []):
             dt = datetime.fromisoformat(f['createdTime'].replace('Z', '+00:00')).astimezone(jst)
             display_date = dt.strftime(f'%Y年%m月%d日({days_map[dt.weekday()]}) %H:%M')
             history_data.append({"id": f['id'], "display_date": display_date})
+            
         return jsonify(history_data)
     except Exception as e:
         print(f"History Error: {e}")
@@ -236,7 +216,7 @@ def history_view():
     try:
         creds = Credentials(**session['credentials'])
         service = build('drive', 'v3', credentials=creds)
-
+        
         def parse_csv(fid):
             content = service.files().get_media(fileId=fid).execute().decode('utf-8-sig')
             r = csv.reader(io.StringIO(content))
@@ -258,14 +238,13 @@ def history_view():
             q_csv = f"'{folders[0]['id']}' in parents and mimeType = 'text/csv' and trashed = false"
             res = service.files().list(q=q_csv, orderBy="createdTime desc", fields="files(id)").execute()
             files = res.get('files', [])
-            # 最新（files[0]）と比較。自分が最新の場合は比較なし
-            if files and files[0]['id'] != tid:
-                prev_colors = parse_csv(files[0]['id'])['colors']
-
+            for i, f in enumerate(files):
+                if f['id'] == tid and i + 1 < len(files):
+                    prev_colors = parse_csv(files[i+1]['id'])['colors']
+                    break
         user = session.get('user_info', {})
-        return render_template('report.html', answers=curr['answers'], colors=curr['colors'], date=curr['date'], user=user, prev_colors=prev_colors, from_param="history")
-    except Exception as e:
-        print(f"History View Error: {e}")
+        return render_template('report.html', answers=curr['answers'], colors=curr['colors'], date=curr['date'], user=user, prev_colors=prev_colors)
+    except:
         return redirect(url_for('history_list'))
 
 @app.route('/logout')
