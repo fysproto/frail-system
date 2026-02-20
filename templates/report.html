@@ -9,8 +9,7 @@
         .container { max-width: 100%; margin: auto; }
         .header { border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 10px; }
         .info-label { display: inline-block; background: #f0f4f8; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; color: #555; margin-right: 10px; }
-        .diff-bad { background-color: rgba(220, 53, 69, 0.08) !important; } 
-        .diff-good { background-color: rgba(0, 123, 255, 0.08) !important; }
+        .diff-change { background-color: rgba(100, 100, 100, 0.10) !important; }
         .legend { font-size: 0.75rem; color: #777; text-align: right; margin-bottom: 10px; }
         .legend-item { display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; }
         .list-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -39,9 +38,12 @@
         </div>
         {% if prev_colors %}
         <div class="legend no-print">
-            <span>前回比較:</span>
-            <span class="legend-item diff-bad">前回より注意が必要</span>
-            <span class="legend-item diff-good">前回より改善</span>
+            {% if from_param == 'history' %}
+            <span>最新の判定と異なる項目:</span>
+            {% else %}
+            <span>前回と異なる項目:</span>
+            {% endif %}
+            <span class="legend-item diff-change">判定が変化</span>
         </div>
         {% endif %}
         <table class="list-table">
@@ -60,14 +62,10 @@
     </div>
     <script>
         function smartExit() {
-            const params = new URLSearchParams(window.location.search);
-            const from = params.get('from');
-            
-            // 1. まずタブを閉じる
             window.close();
-            
-            // 2. 0.3秒経ってもこの画面が残っている（閉じなかった）場合は遷移
             setTimeout(() => {
+                const params = new URLSearchParams(window.location.search);
+                const from = params.get('from');
                 if (from === 'history') {
                     location.href = '/history_list';
                 } else if (from === 'result') {
@@ -106,13 +104,8 @@
         qData.forEach(q => {
             const color = colors[q.id] || 'white';
             const prevColor = prevColors ? prevColors[q.id] : null;
-            let diffClass = '';
-            if (prevColor) {
-                const isPrevBad = (prevColor === 'red' || prevColor === 'yellow');
-                const isCurrBad = (color === 'red' || color === 'yellow');
-                if (!isPrevBad && isCurrBad) diffClass = 'diff-bad';
-                else if (isPrevBad && !isCurrBad) diffClass = 'diff-good';
-            }
+            // 色が違えばグレー帯（改善・悪化の色分けなし）
+            const diffClass = (prevColor && color !== prevColor) ? 'diff-change' : '';
             tbody.innerHTML += `<tr class="${diffClass}"><td style="color:#888; font-size:0.8rem; vertical-align:top; text-align:center;">${q.no}</td><td><span class="q-text">${q.text}</span><span class="a-text">回答：${answers[q.id] || "-"}</span></td><td style="text-align:center;"><div class="eval-icon eval-${color}"></div></td></tr>`;
         });
         {% endraw %}
